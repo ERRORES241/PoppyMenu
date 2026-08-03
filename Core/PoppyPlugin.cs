@@ -22,7 +22,6 @@ namespace PoppyMenu
             Aim.Init();
             Safety.Init();
             ConsoleCommands.Init();
-            PresetStore.Load();
             BindStore.Load();
             MacroStore.Load();
             HomeLayoutStore.Load();

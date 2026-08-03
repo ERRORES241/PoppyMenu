@@ -1,264 +1,347 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using BepInEx;
 using Newtonsoft.Json;
-using RoR2;
 using UnityEngine;
 
 namespace PoppyMenu
 {
-    internal class PresetsModule : PoppyModule
+    internal class ConfigsModule : PoppyModule
     {
-        internal override string Name => "Presets";
+        internal override string Name => "Configs";
 
-        private static string _newName = "";
-        private static string _importCode = "";
-        private static int _expanded = -1;
-        private static Preset _pendingDelete;
+        private static string _newConfigName = "";
+        private static string _pendingDelete;
+
+        private static string ConfigsFolder => Path.Combine(Paths.ConfigPath, "PoppyMenuConfigs");
+
+        private static void EnsureFolderExists()
+        {
+            if (!Directory.Exists(ConfigsFolder))
+                Directory.CreateDirectory(ConfigsFolder);
+        }
+
+        internal static List<ConfigProfile> GetSavedProfiles()
+        {
+            EnsureFolderExists();
+            List<ConfigProfile> list = new List<ConfigProfile>();
+            string[] files = Directory.GetFiles(ConfigsFolder, "*.json");
+            foreach (string file in files)
+            {
+                try
+                {
+                    string json = File.ReadAllText(file);
+                    ConfigProfile profile = JsonConvert.DeserializeObject<ConfigProfile>(json);
+                    if (profile != null)
+                    {
+                        if (string.IsNullOrEmpty(profile.Name))
+                            profile.Name = Path.GetFileNameWithoutExtension(file);
+                        list.Add(profile);
+                    }
+                }
+                catch { }
+            }
+            return list;
+        }
+
+        internal static void SaveProfile(ConfigProfile profile)
+        {
+            EnsureFolderExists();
+            if (profile == null || string.IsNullOrWhiteSpace(profile.Name)) return;
+
+            string safeName = SanitizeFileName(profile.Name.Trim());
+            string path = Path.Combine(ConfigsFolder, safeName + ".json");
+            string json = JsonConvert.SerializeObject(profile, Formatting.Indented);
+            File.WriteAllText(path, json);
+        }
+
+        internal static void DeleteProfile(string name)
+        {
+            EnsureFolderExists();
+            if (string.IsNullOrWhiteSpace(name)) return;
+            string safeName = SanitizeFileName(name.Trim());
+            string path = Path.Combine(ConfigsFolder, safeName + ".json");
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+
+        internal static void RenameProfile(ConfigProfile profile, string newName)
+        {
+            if (profile == null || string.IsNullOrWhiteSpace(newName)) return;
+            DeleteProfile(profile.Name);
+            profile.Name = newName.Trim();
+            SaveProfile(profile);
+        }
+
+        internal static void SetDefaultStartup(ConfigProfile target)
+        {
+            List<ConfigProfile> profiles = GetSavedProfiles();
+            foreach (ConfigProfile p in profiles)
+            {
+                p.IsDefaultStartup = (p.Name == target.Name && target.IsDefaultStartup);
+                SaveProfile(p);
+            }
+        }
+
+        internal static void ApplyStartupConfig()
+        {
+            List<ConfigProfile> profiles = GetSavedProfiles();
+            foreach (ConfigProfile p in profiles)
+            {
+                if (p.IsDefaultStartup)
+                {
+                    p.Apply();
+                    Notify.Push("Loaded startup config: " + p.Name);
+                    break;
+                }
+            }
+        }
+
+        private static string SanitizeFileName(string name)
+        {
+            foreach (char c in Path.GetInvalidFileNameChars())
+            {
+                name = name.Replace(c, '_');
+            }
+            return name;
+        }
 
         internal override void DrawMenu()
         {
-            Widgets.SectionBegin("Presets");
-            Widgets.Hint("Save items and toggles, then flip on Auto-grant to apply them on every spawn.");
+            Widgets.SectionBegin("Configuration Manager");
+            Widgets.Hint("Save, load, rename, or delete your custom feature & ESP profiles.");
+
             GUILayout.BeginHorizontal();
-            _newName = GUILayout.TextField(_newName ?? "", Theme.Search);
-            if (GUILayout.Button("+ New Preset", Theme.Primary, GUILayout.Width(110)))
+            _newConfigName = GUILayout.TextField(_newConfigName ?? "", Theme.Search);
+            if (GUILayout.Button("+ Save Current", Theme.Primary, GUILayout.Width(130)))
             {
-                Preset p = NewEmpty(_newName);
-                _newName = "";
-                _expanded = PresetStore.Presets.IndexOf(p);
+                string name = string.IsNullOrWhiteSpace(_newConfigName) ? "Config_" + DateTime.Now.ToString("HHmmss") : _newConfigName.Trim();
+                ConfigProfile p = ConfigProfile.CaptureCurrent(name);
+                SaveProfile(p);
+                _newConfigName = "";
+                Notify.Push("Saved config: " + p.Name);
             }
             GUILayout.EndHorizontal();
-            Widgets.Button("Save current setup as a preset", () =>
-            {
-                Preset p = PresetStore.AddFromCurrent(_newName);
-                _expanded = PresetStore.Presets.IndexOf(p);
-                Notify.Push("Saved preset: " + p.Name);
-            });
-            GUILayout.BeginHorizontal();
-            _importCode = GUILayout.TextField(_importCode ?? "", Theme.Search);
-            if (GUILayout.Button("Import code", Theme.Button, GUILayout.Width(100))) ImportCode();
-            GUILayout.EndHorizontal();
-            Widgets.Hint("Paste a code to import a shared preset, or use Export on one below to copy its code.");
             Widgets.SectionEnd();
 
-            if (PresetStore.Presets.Count == 0)
+            List<ConfigProfile> profiles = GetSavedProfiles();
+            if (profiles.Count == 0)
             {
-                Widgets.Label("No presets yet, click \"+ New Preset\" above to start.");
+                Widgets.SectionBegin("Saved Configs");
+                Widgets.Label("No saved configs yet. Enter a name above and click '+ Save Current'.");
+                Widgets.SectionEnd();
                 return;
             }
 
-            for (int i = 0; i < PresetStore.Presets.Count; i++)
+            foreach (ConfigProfile p in profiles)
             {
-                Preset p = PresetStore.Presets[i];
+                ConfigProfile profile = p;
                 Widgets.SectionBegin(null);
 
                 GUILayout.BeginHorizontal();
-                string nn = GUILayout.TextField(p.Name ?? "", Theme.Search);
-                if (nn != p.Name) { p.Name = nn; PresetStore.Save(); }
-                if (GUILayout.Button(_expanded == i ? "v Edit" : "> Edit", Theme.Button, GUILayout.Width(64)))
-                    _expanded = _expanded == i ? -1 : i;
+                string updatedName = GUILayout.TextField(profile.Name ?? "", Theme.Search);
+                if (updatedName != profile.Name && !string.IsNullOrWhiteSpace(updatedName))
+                {
+                    RenameProfile(profile, updatedName);
+                }
+
+                if (GUILayout.Button("Load", Theme.Primary, GUILayout.Width(64)))
+                {
+                    profile.Apply();
+                    Notify.Push("Loaded config: " + profile.Name);
+                }
+
+                if (GUILayout.Button("Overwrite", Theme.Button, GUILayout.Width(80)))
+                {
+                    ConfigProfile updated = ConfigProfile.CaptureCurrent(profile.Name);
+                    updated.IsDefaultStartup = profile.IsDefaultStartup;
+                    SaveProfile(updated);
+                    Notify.Push("Overwrote config: " + profile.Name);
+                }
+
+                if (GUILayout.Button("Delete", Theme.Danger_, GUILayout.Width(64)))
+                {
+                    _pendingDelete = profile.Name;
+                }
                 GUILayout.EndHorizontal();
 
-                GUILayout.Label((p.LoadOnStartup ? "<color=#F0C24F>* STARTUP</color>  " : "") + (p.AutoApplyOnSpawn ? "<color=#4FC76B>* AUTO</color>  " : "") + Summary(p),
-                    new GUIStyle(Theme.Hint) { richText = true });
+                bool isDefault = profile.IsDefaultStartup;
+                bool newDefault = Widgets.Toggle("Load on startup (Default profile)", isDefault);
+                if (newDefault != isDefault)
+                {
+                    profile.IsDefaultStartup = newDefault;
+                    SetDefaultStartup(profile);
+                }
 
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Apply now", Theme.Primary)) Cheats.Apply(p);
-                if (GUILayout.Button(p.AutoApplyOnSpawn ? "Auto-grant: ON" : "Auto-grant: OFF",
-                                     p.AutoApplyOnSpawn ? Theme.SwitchOn : Theme.SwitchOff))
-                { p.AutoApplyOnSpawn = !p.AutoApplyOnSpawn; PresetStore.Save(); }
-                Preset exportTarget = p;
-                if (GUILayout.Button("Export", Theme.Button, GUILayout.Width(72))) ExportCode(exportTarget);
-                GUILayout.EndHorizontal();
-
-                if (_expanded == i) DrawEditor(p);
                 Widgets.SectionEnd();
             }
 
-            if (_pendingDelete != null) { PresetStore.Delete(_pendingDelete); _pendingDelete = null; _expanded = -1; }
-        }
-
-        private static void ExportCode(Preset p)
-        {
-            try
+            if (!string.IsNullOrEmpty(_pendingDelete))
             {
-                string json = JsonConvert.SerializeObject(p);
-                GUIUtility.systemCopyBuffer = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(json));
-                Notify.Push("Copied " + p.Name + " code to clipboard");
+                DeleteProfile(_pendingDelete);
+                Notify.Push("Deleted config: " + _pendingDelete);
+                _pendingDelete = null;
             }
-            catch (Exception e) { Log.Error("Preset export failed: " + e); Notify.Push("Export failed"); }
         }
+    }
 
-        private static void ImportCode()
+    internal class ConfigProfile
+    {
+        public string Name { get; set; }
+        public bool IsDefaultStartup { get; set; }
+
+        public bool AimActive { get; set; }
+        public bool AimTargetWeakPoints { get; set; }
+        public bool AimNoSpread { get; set; }
+        public bool AimNoRecoil { get; set; }
+        public bool AimSticky { get; set; }
+        public bool AimBossesOnly { get; set; }
+        public bool AimCheckLos { get; set; }
+        public bool AimMagicBullet { get; set; }
+        public bool AimDrawFov { get; set; }
+        public float AimFovRadius { get; set; }
+        public float AimMaxRange { get; set; }
+
+        public bool EspMobs { get; set; }
+        public bool EspInteractables { get; set; }
+        public bool EspTeleporter { get; set; }
+        public bool EspShowNames { get; set; }
+        public bool EspShowDistance { get; set; }
+        public bool EspShowHealth { get; set; }
+        public bool EspShowOutline { get; set; }
+        public float EspFontSize { get; set; }
+        public float EspMaxDistance { get; set; }
+        public float EspMarkerSize { get; set; }
+
+        public bool MovementFlight { get; set; }
+        public bool MovementNoclip { get; set; }
+        public bool MovementAlwaysSprint { get; set; }
+        public bool MovementJumpPack { get; set; }
+
+        public bool GodMode { get; set; }
+        public bool BuddhaMode { get; set; }
+        public bool InfiniteSkills { get; set; }
+        public bool NoEquipCooldown { get; set; }
+
+        public bool StatDmgOn { get; set; }
+        public float StatDmgMult { get; set; }
+        public bool StatAtkOn { get; set; }
+        public float StatAtkMult { get; set; }
+        public bool StatMoveOn { get; set; }
+        public float StatMoveMult { get; set; }
+        public bool StatArmorOn { get; set; }
+        public float StatArmorBonus { get; set; }
+        public bool StatCritOn { get; set; }
+        public float StatCritBonus { get; set; }
+        public bool StatHpOn { get; set; }
+        public float StatHpMult { get; set; }
+
+        public static ConfigProfile CaptureCurrent(string name)
         {
-            string code = (_importCode ?? "").Trim();
-            if (code.Length == 0) return;
-            try
+            return new ConfigProfile
             {
-                byte[] bytes = Convert.FromBase64String(code);
-                Preset p = JsonConvert.DeserializeObject<Preset>(System.Text.Encoding.UTF8.GetString(bytes));
-                if (p == null) { Notify.Push("Bad preset code"); return; }
-                if (string.IsNullOrWhiteSpace(p.Name)) p.Name = "Imported";
-                PresetStore.Presets.Add(p);
-                PresetStore.Save();
-                _importCode = "";
-                Notify.Push("Imported preset: " + p.Name);
-            }
-            catch (Exception e) { Log.Error("Preset import failed: " + e); Notify.Push("Bad preset code"); }
+                Name = name,
+                AimActive = Aim.Enabled || Aim.Active,
+                AimTargetWeakPoints = Aim.TargetWeakPoints,
+                AimNoSpread = Aim.NoSpread,
+                AimNoRecoil = Aim.NoRecoil,
+                AimSticky = Aim.Sticky,
+                AimBossesOnly = Aim.PrioritizeBosses,
+                AimCheckLos = Aim.RequireLoS,
+                AimMagicBullet = Aim.MagicBullet,
+                AimDrawFov = Aim.ShowFovCircle,
+                AimFovRadius = Aim.Fov,
+                AimMaxRange = Aim.MaxRange,
+
+                EspMobs = RenderModule.EspMobs,
+                EspInteractables = RenderModule.EspInteractables,
+                EspTeleporter = RenderModule.EspTeleporter,
+                EspShowNames = RenderModule.ShowNames,
+                EspShowDistance = RenderModule.ShowDistance,
+                EspShowHealth = RenderModule.ShowEnemyHealth,
+                EspShowOutline = RenderModule.ShowOutline,
+                EspFontSize = RenderModule.FontSize,
+                EspMaxDistance = RenderModule.MaxDistance,
+                EspMarkerSize = RenderModule.MarkerSize,
+
+                MovementFlight = MovementModule.Flight,
+                MovementNoclip = MovementModule.NoClip,
+                MovementAlwaysSprint = MovementModule.AlwaysSprint,
+                MovementJumpPack = MovementModule.JumpPack,
+
+                GodMode = PlayerModule.GodMode,
+                BuddhaMode = Safety.Buddha,
+                InfiniteSkills = PlayerModule.InfiniteSkills,
+                NoEquipCooldown = ItemsModule.NoEquipmentCooldown,
+
+                StatDmgOn = StatsModule.DamageOn,
+                StatDmgMult = StatsModule.DamageMult,
+                StatAtkOn = StatsModule.AttackSpeedOn,
+                StatAtkMult = StatsModule.AttackSpeedMult,
+                StatMoveOn = StatsModule.MoveSpeedOn,
+                StatMoveMult = StatsModule.MoveSpeedMult,
+                StatArmorOn = StatsModule.ArmorOn,
+                StatArmorBonus = StatsModule.ArmorBonus,
+                StatCritOn = StatsModule.CritOn,
+                StatCritBonus = StatsModule.CritBonus,
+                StatHpOn = StatsModule.MaxHealthOn,
+                StatHpMult = StatsModule.MaxHealthMult
+            };
         }
 
-        private static Preset NewEmpty(string name)
+        public void Apply()
         {
-            Preset p = new Preset { Name = string.IsNullOrWhiteSpace(name) ? "Preset " + (PresetStore.Presets.Count + 1) : name.Trim() };
-            PresetStore.Presets.Add(p);
-            PresetStore.Save();
-            Notify.Push("Created preset: " + p.Name);
-            return p;
-        }
+            Aim.Enabled = AimActive;
+            Aim.Active = AimActive;
+            Aim.TargetWeakPoints = AimTargetWeakPoints;
+            Aim.NoSpread = AimNoSpread;
+            Aim.NoRecoil = AimNoRecoil;
+            Aim.Sticky = AimSticky;
+            Aim.PrioritizeBosses = AimBossesOnly;
+            Aim.RequireLoS = AimCheckLos;
+            Aim.MagicBullet = AimMagicBullet;
+            Aim.ShowFovCircle = AimDrawFov;
+            Aim.Fov = AimFovRadius;
+            Aim.MaxRange = AimMaxRange;
 
-        private static void DrawEditor(Preset p)
-        {
-            Widgets.Header("Items granted on spawn");
-            Preset preset = p;
-            Widgets.Button("+ Add item", () => ItemPicker.Open("Add item to " + preset.Name, idx => AddItem(preset, idx)));
-            if (p.Items.Count == 0 && p.Equipment.Count == 0 && !p.GiveAllItems)
-                Widgets.Hint("No items yet, click \"+ Add item\".");
+            RenderModule.EspMobs = EspMobs;
+            RenderModule.EspInteractables = EspInteractables;
+            RenderModule.EspTeleporter = EspTeleporter;
+            RenderModule.ShowNames = EspShowNames;
+            RenderModule.ShowDistance = EspShowDistance;
+            RenderModule.ShowEnemyHealth = EspShowHealth;
+            RenderModule.ShowOutline = EspShowOutline;
+            RenderModule.FontSize = EspFontSize;
+            RenderModule.MaxDistance = EspMaxDistance;
+            RenderModule.MarkerSize = EspMarkerSize;
 
-            for (int k = p.Items.Count - 1; k >= 0; k--)
-            {
-                GrantItem g = p.Items[k];
-                GUILayout.BeginHorizontal();
-                GUILayout.Label(string.IsNullOrEmpty(g.Display) ? g.Name : g.Display, Theme.Label, GUILayout.ExpandWidth(true));
-                if (GUILayout.Button("-", Theme.Button, GUILayout.Width(24))) { g.Count = Mathf.Max(1, g.Count - 1); PresetStore.Save(); }
-                GUILayout.Label("x" + g.Count, Theme.Label, GUILayout.Width(38));
-                if (GUILayout.Button("+", Theme.Button, GUILayout.Width(24))) { g.Count++; PresetStore.Save(); }
-                if (GUILayout.Button("X", Theme.Danger_, GUILayout.Width(24))) { p.Items.RemoveAt(k); PresetStore.Save(); }
-                GUILayout.EndHorizontal();
-            }
+            MovementModule.Flight = MovementFlight;
+            MovementModule.NoClip = MovementNoclip;
+            MovementModule.AlwaysSprint = MovementAlwaysSprint;
+            MovementModule.JumpPack = MovementJumpPack;
 
-            Widgets.PickerButton("+ Add equipment", "Add equipment to preset", BuildEquipRows(p));
-            for (int k = p.Equipment.Count - 1; k >= 0; k--)
-            {
-                GUILayout.BeginHorizontal();
-                GUILayout.Label(p.Equipment[k], Theme.Label, GUILayout.ExpandWidth(true));
-                if (GUILayout.Button("X", Theme.Danger_, GUILayout.Width(24))) { p.Equipment.RemoveAt(k); PresetStore.Save(); }
-                GUILayout.EndHorizontal();
-            }
+            PlayerModule.GodMode = GodMode;
+            Safety.Buddha = BuddhaMode;
+            PlayerModule.InfiniteSkills = InfiniteSkills;
+            ItemsModule.NoEquipmentCooldown = NoEquipCooldown;
 
-            Tog("Give ALL items", ref p.GiveAllItems);
-            Step("Gold", ref p.Money, 1000, 0, 1000000000);
-            Step("XP", ref p.Xp, 100, 0, 1000000000);
-            Step("Lunar coins", ref p.Coins, 5, 0, 100000);
+            StatsModule.DamageOn = StatDmgOn;
+            StatsModule.DamageMult = StatDmgMult;
+            StatsModule.AttackSpeedOn = StatAtkOn;
+            StatsModule.AttackSpeedMult = StatAtkMult;
+            StatsModule.MoveSpeedOn = StatMoveOn;
+            StatsModule.MoveSpeedMult = StatMoveMult;
+            StatsModule.ArmorOn = StatArmorOn;
+            StatsModule.ArmorBonus = StatArmorBonus;
+            StatsModule.CritOn = StatCritOn;
+            StatsModule.CritBonus = StatCritBonus;
+            StatsModule.MaxHealthOn = StatHpOn;
+            StatsModule.MaxHealthMult = StatHpMult;
 
-            Widgets.Header("Features enabled on spawn");
-            Tog("God Mode", ref p.God);
-            Tog("Infinite Skills", ref p.Skills);
-            Tog("Silent Aim", ref p.SilentAim);
-            Tog("Flight", ref p.Flight);
-            Tog("Always Sprint", ref p.Sprint);
-            Tog("Jump Pack", ref p.JumpPack);
-            Tog("No Equipment Cooldown", ref p.NoEquipCd);
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Copy current stat mults", Theme.Button)) { CopyStats(p); PresetStore.Save(); }
-            if (GUILayout.Button("Clear", Theme.Button, GUILayout.Width(56))) { ClearStats(p); PresetStore.Save(); }
-            GUILayout.EndHorizontal();
-            Widgets.Hint(StatSummary(p));
-
-            Widgets.Header("Automation");
-            Tog("Auto-grant on spawn", ref p.AutoApplyOnSpawn);
-            Widgets.Hint(p.AutoApplyOnSpawn
-                ? "This preset runs automatically every time your character spawns."
-                : "Off, use \"Apply now\" to run it manually.");
-
-            Tog("Load on startup (your default)", ref p.LoadOnStartup);
-            Widgets.Hint(p.LoadOnStartup
-                ? "Applied once when you first load into a game each session, so this setup is always there when you reopen the game."
-                : "Off. Turn on to make this your default setup that loads every time.");
-
-            Widgets.Separator();
-            Widgets.ConfirmButton("preset.delete." + p.Name, "Delete this preset", () => _pendingDelete = p);
-        }
-
-        private static void Tog(string label, ref bool field)
-        {
-            bool v = Widgets.Toggle(label, field);
-            if (v != field) { field = v; PresetStore.Save(); }
-        }
-
-        private static void Step(string label, ref int field, int step, int min, int max)
-        {
-            int v = Widgets.IntStepper(label, field, step, min, max);
-            if (v != field) { field = v; PresetStore.Save(); }
-        }
-
-        private static void AddItem(Preset p, ItemIndex idx)
-        {
-            ItemDef def = ItemCatalog.GetItemDef(idx);
-            if (def == null) return;
-
-            string display = def.name;
-            foreach (var e in Catalogs.Items)
-                if (e.Index == idx) { display = e.Name; break; }
-
-            GrantItem existing = p.Items.Find(g => g.Name == def.name);
-            if (existing != null) existing.Count++;
-            else p.Items.Add(new GrantItem { Name = def.name, Display = display, Count = 1 });
-            PresetStore.Save();
-            Notify.Push("Added " + display);
-        }
-
-        private static List<ListPicker.Row> BuildEquipRows(Preset p)
-        {
-            var rows = new List<ListPicker.Row>(Catalogs.Equipment.Count);
-            foreach (var entry in Catalogs.Equipment)
-            {
-                var e = entry;
-                rows.Add(new ListPicker.Row(e.Name, e.Color, () =>
-                {
-                    EquipmentDef def = EquipmentCatalog.GetEquipmentDef(e.Index);
-                    if (def != null && !p.Equipment.Contains(def.name)) { p.Equipment.Add(def.name); PresetStore.Save(); Notify.Push("Added " + e.Name); }
-                }));
-            }
-            return rows;
-        }
-
-        private static void CopyStats(Preset p)
-        {
-            p.DmgOn = StatsModule.DamageOn; p.AtkOn = StatsModule.AttackSpeedOn; p.MoveOn = StatsModule.MoveSpeedOn;
-            p.ArmorOn = StatsModule.ArmorOn; p.CritOn = StatsModule.CritOn; p.HpOn = StatsModule.MaxHealthOn;
-            p.DmgMul = StatsModule.DamageMult; p.AtkMul = StatsModule.AttackSpeedMult; p.MoveMul = StatsModule.MoveSpeedMult;
-            p.ArmorMul = StatsModule.ArmorMult; p.CritMul = StatsModule.CritMult; p.HpMul = StatsModule.MaxHealthMult;
-        }
-
-        private static void ClearStats(Preset p)
-        {
-            p.DmgOn = p.AtkOn = p.MoveOn = p.ArmorOn = p.CritOn = p.HpOn = false;
-        }
-
-        private static string StatSummary(Preset p)
-        {
-            var parts = new List<string>();
-            if (p.DmgOn) parts.Add($"Dmg x{p.DmgMul:0.#}");
-            if (p.AtkOn) parts.Add($"Atk x{p.AtkMul:0.#}");
-            if (p.MoveOn) parts.Add($"Move x{p.MoveMul:0.#}");
-            if (p.ArmorOn) parts.Add($"Armor x{p.ArmorMul:0.#}");
-            if (p.CritOn) parts.Add($"Crit x{p.CritMul:0.#}");
-            if (p.HpOn) parts.Add($"HP x{p.HpMul:0.#}");
-            return parts.Count == 0 ? "Stat multipliers: none" : "Stat multipliers: " + string.Join(", ", parts);
-        }
-
-        private static string Summary(Preset p)
-        {
-            var parts = new List<string>();
-            int items = p.Items.Count + p.Equipment.Count;
-            if (items > 0) parts.Add(items + (items == 1 ? " item" : " items"));
-            if (p.GiveAllItems) parts.Add("all items");
-            if (p.Money > 0 || p.Xp > 0 || p.Coins > 0) parts.Add("currency");
-            if (p.God) parts.Add("God");
-            if (p.Flight) parts.Add("Flight");
-            if (p.SilentAim) parts.Add("Silent Aim");
-            if (p.Skills) parts.Add("Skills");
-            return parts.Count == 0 ? "empty" : string.Join(" · ", parts);
+            ModConfig.Save();
         }
     }
 }

@@ -23,7 +23,7 @@ namespace PoppyMenu
             _groups.Add(new TabGroup("Players", new PlayersModule()));
             _groups.Add(new TabGroup("Visuals", new RenderModule()));
             _groups.Add(new TabGroup("Console", new ConsoleModule()));
-            _groups.Add(new TabGroup("Settings", new SettingsModule(), new KeybindsModule(), new PresetsModule(), new MacrosModule()));
+            _groups.Add(new TabGroup("Settings", new SettingsModule(), new KeybindsModule(), new ConfigsModule(), new MacrosModule()));
 
             foreach (TabGroup g in _groups) _modules.AddRange(g.Pages);
 
@@ -73,7 +73,7 @@ namespace PoppyMenu
             if (_pendingAutoApply && PlayerContext.HasBody)
             {
                 _pendingAutoApply = false;
-                try { PresetStore.ApplyStartupPresets(); PresetStore.ApplyAutoPresets(); } catch (System.Exception e) { Log.Error(e); }
+                try { ConfigsModule.ApplyStartupConfig(); } catch (System.Exception e) { Log.Error(e); }
             }
 
             HandleHotkeys();

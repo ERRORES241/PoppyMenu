@@ -55,21 +55,6 @@ namespace PoppyMenu
             MaxDistance = Widgets.Slider("Max distance (0 = unlimited)", MaxDistance, 0f, 500f);
             MarkerSize = Widgets.Slider("Marker size", MarkerSize, 2f, 16f);
             Widgets.SectionEnd();
-
-            Widgets.SectionBegin("Colors");
-            EnemyColor = ColorRow("Enemies", EnemyColor);
-            InteractableColor = ColorRow("Interactables", InteractableColor);
-            TeleporterColor = ColorRow("Teleporter", TeleporterColor);
-            Widgets.SectionEnd();
-        }
-
-        private static Color ColorRow(string label, Color c)
-        {
-            Widgets.Label(label);
-            c.r = Widgets.Slider("  R", c.r, 0f, 1f);
-            c.g = Widgets.Slider("  G", c.g, 0f, 1f);
-            c.b = Widgets.Slider("  B", c.b, 0f, 1f);
-            return c;
         }
 
         internal override void DrawOverlay()
