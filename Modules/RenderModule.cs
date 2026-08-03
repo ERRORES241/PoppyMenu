@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using RoR2;
 using UnityEngine;
 
@@ -14,6 +15,8 @@ namespace PoppyMenu
         internal static bool ShowNames = true;
         internal static bool ShowDistance = true;
         internal static bool ShowEnemyHealth = true;
+        internal static bool ShowOutline = true;
+        internal static float FontSize = 12f;
         internal static float MaxDistance;
         internal static float MarkerSize = 6f;
 
@@ -47,6 +50,8 @@ namespace PoppyMenu
             ShowNames = Widgets.Toggle("Show names", ShowNames);
             ShowDistance = Widgets.Toggle("Show distance", ShowDistance);
             ShowEnemyHealth = Widgets.Toggle("Show enemy health", ShowEnemyHealth);
+            ShowOutline = Widgets.Toggle("Text outline", ShowOutline);
+            FontSize = Widgets.Slider("Font size", FontSize, 8f, 24f);
             MaxDistance = Widgets.Slider("Max distance (0 = unlimited)", MaxDistance, 0f, 500f);
             MarkerSize = Widgets.Slider("Marker size", MarkerSize, 2f, 16f);
             Widgets.SectionEnd();
@@ -93,7 +98,7 @@ namespace PoppyMenu
                         if (t == myTeam || t == TeamIndex.None || t == TeamIndex.Neutral || t == TeamIndex.Player) continue;
 
                         if (Culled(origin, body.corePosition, out float dist)) continue;
-                        DrawMarker(cam, body.corePosition, EnemyLabel(body, dist), EnemyColor);
+                        DrawMarker(cam, body.corePosition, EnemyMultiLineLabel(body, dist), EnemyColor);
                     }
                 }
 
@@ -104,8 +109,8 @@ namespace PoppyMenu
                         if (pi == null || !pi.available) continue;
                         if (Culled(origin, pi.transform.position, out float dist)) continue;
 
-                        string name = GetInteractableLabel(pi, out Color itemCol);
-                        DrawMarker(cam, pi.transform.position, Label(name, dist), itemCol);
+                        string label = GetInteractableMultiLineLabel(pi, dist, out Color itemCol);
+                        DrawMarker(cam, pi.transform.position, label, itemCol);
                     }
 
                     var pickups = InstanceTracker.GetInstancesList<GenericPickupController>();
@@ -116,9 +121,8 @@ namespace PoppyMenu
                             if (gpc == null) continue;
                             if (Culled(origin, gpc.transform.position, out float dist)) continue;
 
-                            string contentName = GetPickupContentInfo(gpc.pickupIndex, out Color itemCol);
-                            string name = !string.IsNullOrEmpty(contentName) ? contentName : "Pickup";
-                            DrawMarker(cam, gpc.transform.position, Label(name, dist), itemCol);
+                            string label = GetPickupMultiLineLabel(gpc, dist, out Color itemCol);
+                            DrawMarker(cam, gpc.transform.position, label, itemCol);
                         }
                     }
                 }
@@ -128,8 +132,8 @@ namespace PoppyMenu
                     Vector3 tp = TeleporterInteraction.instance.transform.position;
                     if (!Culled(origin, tp, out float dist))
                     {
-                        string tpState = TeleporterInteraction.instance.isCharged ? "Teleporter (Charged)" : "Teleporter";
-                        DrawMarker(cam, tp, Label(tpState, dist), TeleporterColor);
+                        string label = TeleporterMultiLineLabel(TeleporterInteraction.instance, dist);
+                        DrawMarker(cam, tp, label, TeleporterColor);
                     }
                 }
             }
@@ -148,13 +152,13 @@ namespace PoppyMenu
             }
         }
 
-        private static string GetInteractableLabel(PurchaseInteraction pi, out Color overrideColor)
+        private static string GetInteractableMultiLineLabel(PurchaseInteraction pi, float dist, out Color overrideColor)
         {
             overrideColor = InteractableColor;
             if (pi == null) return "";
 
-            string baseName = pi.GetDisplayName();
-            if (string.IsNullOrEmpty(baseName)) baseName = pi.name.Replace("(Clone)", "").Trim();
+            string baseName = ShowNames ? pi.GetDisplayName() : "";
+            if (string.IsNullOrEmpty(baseName) && ShowNames) baseName = pi.name.Replace("(Clone)", "").Trim();
 
             PickupIndex pickupIndex = PickupIndex.none;
 
@@ -172,6 +176,7 @@ namespace PoppyMenu
                 }
             }
 
+            string contentStr = "";
             if (pickupIndex != PickupIndex.none)
             {
                 string contentName = GetPickupContentInfo(pickupIndex, out Color itemColor);
@@ -179,11 +184,27 @@ namespace PoppyMenu
 
                 if (!string.IsNullOrEmpty(contentName))
                 {
-                    return $"{baseName} [{contentName}]";
+                    contentStr = $"[{contentName}]";
                 }
             }
 
-            return baseName;
+            string distStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
+
+            return BuildMultiLine(baseName, contentStr, distStr);
+        }
+
+        private static string GetPickupMultiLineLabel(GenericPickupController gpc, float dist, out Color overrideColor)
+        {
+            overrideColor = InteractableColor;
+            if (gpc == null) return "";
+
+            string contentName = GetPickupContentInfo(gpc.pickupIndex, out Color itemCol);
+            if (itemCol != Color.clear) overrideColor = itemCol;
+
+            string baseName = ShowNames ? (!string.IsNullOrEmpty(contentName) ? contentName : "Pickup") : "";
+            string distStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
+
+            return BuildMultiLine(baseName, "", distStr);
         }
 
         private static string GetPickupContentInfo(PickupIndex pickupIndex, out Color contentColor)
@@ -240,23 +261,32 @@ namespace PoppyMenu
             return MaxDistance > 0.5f && dist > MaxDistance;
         }
 
-        private static string EnemyLabel(CharacterBody body, float dist)
+        private static string EnemyMultiLineLabel(CharacterBody body, float dist)
         {
-            string s = ShowNames ? body.GetDisplayName() : "";
-            if (ShowEnemyHealth && body.healthComponent != null)
-                s = Append(s, Mathf.CeilToInt(body.healthComponent.combinedHealth) + " hp");
-            if (ShowDistance) s = Append(s, Mathf.RoundToInt(dist) + "m");
-            return s;
+            string nameStr = ShowNames ? body.GetDisplayName() : "";
+            string hpStr = (ShowEnemyHealth && body.healthComponent != null) ? $"{Mathf.CeilToInt(body.healthComponent.combinedHealth)} hp" : "";
+            string distStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
+
+            return BuildMultiLine(nameStr, hpStr, distStr);
         }
 
-        private static string Label(string name, float dist)
+        private static string TeleporterMultiLineLabel(TeleporterInteraction tp, float dist)
         {
-            string s = ShowNames ? name : "";
-            if (ShowDistance) s = Append(s, Mathf.RoundToInt(dist) + "m");
-            return s;
+            string nameStr = ShowNames ? "Teleporter" : "";
+            string stateStr = tp.isCharged ? "(Charged)" : (tp.isCharging ? $"(Charging {Mathf.FloorToInt(tp.chargeFraction * 100)}%)" : "");
+            string distStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
+
+            return BuildMultiLine(nameStr, stateStr, distStr);
         }
 
-        private static string Append(string a, string b) => a.Length > 0 ? a + "  " + b : b;
+        private static string BuildMultiLine(string line1, string line2, string line3)
+        {
+            List<string> lines = new List<string>();
+            if (!string.IsNullOrEmpty(line1)) lines.Add(line1);
+            if (!string.IsNullOrEmpty(line2)) lines.Add(line2);
+            if (!string.IsNullOrEmpty(line3)) lines.Add(line3);
+            return string.Join("\n", lines);
+        }
 
         private void DrawMarker(Camera cam, Vector3 worldPos, string label, Color color)
         {
@@ -268,10 +298,37 @@ namespace PoppyMenu
             Theme.Fill(new Rect(sp.x - half, y - half, MarkerSize, MarkerSize), color);
 
             if (string.IsNullOrEmpty(label)) return;
-            if (_labelStyle == null) _labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 11, fontStyle = FontStyle.Bold };
+
+            if (_labelStyle == null)
+            {
+                _labelStyle = new GUIStyle(GUI.skin.label)
+                {
+                    alignment = TextAnchor.UpperCenter,
+                    fontStyle = FontStyle.Bold
+                };
+            }
+
+            int fSize = Mathf.Clamp(Mathf.RoundToInt(FontSize), 8, 30);
+            _labelStyle.fontSize = fSize;
+
+            GUIContent content = new GUIContent(label);
+            Vector2 size = _labelStyle.CalcSize(content);
+            float labelWidth = Mathf.Max(size.x + 12f, 160f);
+            float labelHeight = size.y;
+
+            Rect labelRect = new Rect(sp.x - labelWidth * 0.5f, y + half + 2f, labelWidth, labelHeight);
+
+            if (ShowOutline)
+            {
+                _labelStyle.normal.textColor = Color.black;
+                GUI.Label(new Rect(labelRect.x - 1f, labelRect.y, labelRect.width, labelRect.height), content, _labelStyle);
+                GUI.Label(new Rect(labelRect.x + 1f, labelRect.y, labelRect.width, labelRect.height), content, _labelStyle);
+                GUI.Label(new Rect(labelRect.x, labelRect.y - 1f, labelRect.width, labelRect.height), content, _labelStyle);
+                GUI.Label(new Rect(labelRect.x, labelRect.y + 1f, labelRect.width, labelRect.height), content, _labelStyle);
+            }
 
             _labelStyle.normal.textColor = color;
-            GUI.Label(new Rect(sp.x + half + 3f, y - 8f, 280f, 20f), label, _labelStyle);
+            GUI.Label(labelRect, content, _labelStyle);
         }
     }
 }
