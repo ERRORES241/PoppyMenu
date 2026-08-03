@@ -201,6 +201,7 @@ namespace PoppyMenu
         public bool AimBossesOnly { get; set; }
         public bool AimCheckLos { get; set; }
         public bool AimMagicBullet { get; set; }
+        public bool AimUseFov { get; set; }
         public bool AimDrawFov { get; set; }
         public float AimFovRadius { get; set; }
         public float AimMaxRange { get; set; }
@@ -252,6 +253,7 @@ namespace PoppyMenu
                 AimBossesOnly = Aim.PrioritizeBosses,
                 AimCheckLos = Aim.RequireLoS,
                 AimMagicBullet = Aim.MagicBullet,
+                AimUseFov = Aim.UseFov,
                 AimDrawFov = Aim.ShowFovCircle,
                 AimFovRadius = Aim.Fov,
                 AimMaxRange = Aim.MaxRange,
@@ -303,6 +305,7 @@ namespace PoppyMenu
             Aim.PrioritizeBosses = AimBossesOnly;
             Aim.RequireLoS = AimCheckLos;
             Aim.MagicBullet = AimMagicBullet;
+            Aim.UseFov = AimUseFov;
             Aim.ShowFovCircle = AimDrawFov;
             Aim.Fov = AimFovRadius;
             Aim.MaxRange = AimMaxRange;

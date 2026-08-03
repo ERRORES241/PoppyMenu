@@ -271,25 +271,34 @@ namespace PoppyMenu
             GUILayout.EndArea();
         }
 
+        private static readonly List<string> _cachedActiveList = new List<string>();
+        private static float _nextActiveCheck;
+
         internal static List<string> ActiveEffects()
         {
-            var list = new List<string>();
-            if (PlayerModule.GodMode) list.Add("God Mode");
-            if (PlayerModule.InfiniteSkills) list.Add("Infinite Skills");
-            if (Aim.Enabled) list.Add("Aimbot");
-            if (Aim.MagicBullet) list.Add("Magic Bullet");
-            if (MovementModule.Flight) list.Add("Flight");
-            if (MovementModule.NoClip) list.Add("No-Clip");
-            if (MovementModule.AlwaysSprint) list.Add("Always Sprint");
-            if (MovementModule.JumpPack) list.Add("Jump Pack");
-            if (StatsModule.Active) list.Add("Stat Mods");
-            if (ItemsModule.NoEquipmentCooldown) list.Add("No Equip Cooldown");
-            if (RenderModule.EspMobs || RenderModule.EspInteractables || RenderModule.EspTeleporter) list.Add("ESP");
-            if (WorldModule.FreezeMatch) list.Add("Match Frozen");
-            if (WorldModule.FreezeTimer) list.Add("Timer Frozen");
+            if (Time.realtimeSinceStartup < _nextActiveCheck)
+                return _cachedActiveList;
+
+            _nextActiveCheck = Time.realtimeSinceStartup + 0.2f;
+            _cachedActiveList.Clear();
+
+            if (PlayerModule.GodMode) _cachedActiveList.Add("God Mode");
+            if (PlayerModule.InfiniteSkills) _cachedActiveList.Add("Infinite Skills");
+            if (Aim.Enabled) _cachedActiveList.Add("Aimbot");
+            if (Aim.MagicBullet) _cachedActiveList.Add("Magic Bullet");
+            if (MovementModule.Flight) _cachedActiveList.Add("Flight");
+            if (MovementModule.NoClip) _cachedActiveList.Add("No-Clip");
+            if (MovementModule.AlwaysSprint) _cachedActiveList.Add("Always Sprint");
+            if (MovementModule.JumpPack) _cachedActiveList.Add("Jump Pack");
+            if (StatsModule.Active) _cachedActiveList.Add("Stat Mods");
+            if (ItemsModule.NoEquipmentCooldown) _cachedActiveList.Add("No Equip Cooldown");
+            if (RenderModule.EspMobs || RenderModule.EspInteractables || RenderModule.EspTeleporter) _cachedActiveList.Add("ESP");
+            if (WorldModule.FreezeMatch) _cachedActiveList.Add("Match Frozen");
+            if (WorldModule.FreezeTimer) _cachedActiveList.Add("Timer Frozen");
             if (System.Math.Abs(WorldModule.TimeScale - 1f) > 0.001f && !WorldModule.FreezeMatch)
-                list.Add($"Time {WorldModule.TimeScale:0.##}x");
-            return list;
+                _cachedActiveList.Add($"Time {WorldModule.TimeScale:0.##}x");
+
+            return _cachedActiveList;
         }
     }
 }

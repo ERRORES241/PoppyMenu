@@ -18,8 +18,53 @@ namespace PoppyMenu
 
         internal static bool HasBody => Master != null && Body != null;
 
+        private static CharacterBody _cachedBody;
+
         internal static void Refresh()
         {
+            if (!InGame)
+            {
+                User = null;
+                Master = null;
+                Body = null;
+                Inventory = null;
+                Health = null;
+                Skills = null;
+                Motor = null;
+                InputBank = null;
+                _cachedBody = null;
+                return;
+            }
+
+            var players = NetworkUser.readOnlyLocalPlayersList;
+            if (players.Count > 0)
+            {
+                NetworkUser nu = players[0];
+                if (nu != null)
+                {
+                    User = nu;
+                    Master = nu.master;
+                    if (Master != null)
+                    {
+                        Inventory = Master.inventory;
+                        CharacterBody b = Master.GetBody();
+                        Body = b;
+                        if (b != null)
+                        {
+                            Health = b.healthComponent;
+                            Skills = b.skillLocator;
+                            if (b != _cachedBody)
+                            {
+                                _cachedBody = b;
+                                Motor = b.GetComponent<CharacterMotor>();
+                                InputBank = b.GetComponent<InputBankTest>();
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+
             User = null;
             Master = null;
             Body = null;
@@ -28,31 +73,7 @@ namespace PoppyMenu
             Skills = null;
             Motor = null;
             InputBank = null;
-
-            if (!InGame)
-                return;
-
-            foreach (NetworkUser nu in NetworkUser.readOnlyLocalPlayersList)
-            {
-                if (nu == null)
-                    continue;
-
-                User = nu;
-                Master = nu.master;
-                if (Master == null)
-                    continue;
-
-                Body = Master.GetBody();
-                if (Body == null)
-                    continue;
-
-                Inventory = Master.inventory;
-                Health = Body.healthComponent;
-                Skills = Body.skillLocator;
-                Motor = Body.GetComponent<CharacterMotor>();
-                InputBank = Body.GetComponent<InputBankTest>();
-                break;
-            }
+            _cachedBody = null;
         }
 
         internal static Ray AimRay()
