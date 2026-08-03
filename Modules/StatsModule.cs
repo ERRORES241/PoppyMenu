@@ -9,8 +9,12 @@ namespace PoppyMenu
         internal override string Name => "Stats";
 
         internal static bool DamageOn, AttackSpeedOn, MoveSpeedOn, ArmorOn, CritOn, MaxHealthOn;
-        internal static float DamageMult = 1f, AttackSpeedMult = 1f, MoveSpeedMult = 1f,
-                              ArmorMult = 1f, CritMult = 1f, MaxHealthMult = 1f;
+        internal static float DamageMult = 1f, AttackSpeedMult = 1f, MoveSpeedMult = 1f, MaxHealthMult = 1f;
+        internal static float ArmorBonus = 0f;
+        internal static float CritBonus = 100f;
+
+        internal static float ArmorMult { get => ArmorBonus; set => ArmorBonus = value; }
+        internal static float CritMult { get => CritBonus; set => CritBonus = value; }
 
         private static Harmony _harmony;
         private static bool _wasOn;
@@ -42,8 +46,8 @@ namespace PoppyMenu
             if (DamageOn) __instance.damage *= DamageMult;
             if (AttackSpeedOn) __instance.attackSpeed *= AttackSpeedMult;
             if (MoveSpeedOn) __instance.moveSpeed *= MoveSpeedMult;
-            if (ArmorOn) __instance.armor *= ArmorMult;
-            if (CritOn) __instance.crit *= CritMult;
+            if (ArmorOn) __instance.armor += ArmorBonus;
+            if (CritOn) __instance.crit += CritBonus;
             if (MaxHealthOn) __instance.maxHealth *= MaxHealthMult;
         }
 
@@ -57,28 +61,28 @@ namespace PoppyMenu
 
         internal override void DrawMenu()
         {
-            Widgets.SectionBegin("Stat Multipliers");
+            Widgets.SectionBegin("Stat Multipliers & Bonuses");
 
-            DamageOn = Widgets.Toggle("Damage", DamageOn);
-            DamageMult = Widgets.Slider("Damage x", DamageMult, 1f, 50f);
+            DamageOn = Widgets.Toggle("Damage Multiplier", DamageOn);
+            DamageMult = Widgets.Slider("Damage x", DamageMult, 1f, 100f);
 
-            AttackSpeedOn = Widgets.Toggle("Attack Speed", AttackSpeedOn);
-            AttackSpeedMult = Widgets.Slider("Atk Spd x", AttackSpeedMult, 1f, 50f);
+            AttackSpeedOn = Widgets.Toggle("Attack Speed Multiplier", AttackSpeedOn);
+            AttackSpeedMult = Widgets.Slider("Atk Spd x", AttackSpeedMult, 1f, 100f);
 
-            MoveSpeedOn = Widgets.Toggle("Move Speed", MoveSpeedOn);
-            MoveSpeedMult = Widgets.Slider("Move x", MoveSpeedMult, 1f, 50f);
+            MoveSpeedOn = Widgets.Toggle("Move Speed Multiplier", MoveSpeedOn);
+            MoveSpeedMult = Widgets.Slider("Move x", MoveSpeedMult, 1f, 100f);
 
-            ArmorOn = Widgets.Toggle("Armor", ArmorOn);
-            ArmorMult = Widgets.Slider("Armor x", ArmorMult, 1f, 50f);
+            ArmorOn = Widgets.Toggle("Armor Bonus", ArmorOn);
+            ArmorBonus = Widgets.Slider("Armor +", ArmorBonus, 0f, 1000f);
 
-            CritOn = Widgets.Toggle("Crit", CritOn);
-            CritMult = Widgets.Slider("Crit x", CritMult, 1f, 50f);
+            CritOn = Widgets.Toggle("Crit Chance Bonus", CritOn);
+            CritBonus = Widgets.Slider("Crit +%", CritBonus, 0f, 1000f);
 
-            MaxHealthOn = Widgets.Toggle("Max Health", MaxHealthOn);
-            MaxHealthMult = Widgets.Slider("Health x", MaxHealthMult, 1f, 50f);
+            MaxHealthOn = Widgets.Toggle("Max Health Multiplier", MaxHealthOn);
+            MaxHealthMult = Widgets.Slider("Health x", MaxHealthMult, 1f, 100f);
             Widgets.SectionEnd();
 
-            Widgets.SectionBegin("Current");
+            Widgets.SectionBegin("Current Stats");
             if (PlayerContext.HasBody)
             {
                 CharacterBody b = PlayerContext.Body;
@@ -86,7 +90,7 @@ namespace PoppyMenu
                 Widgets.Label($"Damage: {b.damage:0.##}");
                 Widgets.Label($"Attack Speed: {b.attackSpeed:0.##}");
                 Widgets.Label($"Armor: {b.armor:0.##}");
-                Widgets.Label($"Crit: {b.crit:0.##}%");
+                Widgets.Label($"Crit Chance: {b.crit:0.##}%");
                 Widgets.Label($"Move Speed: {b.moveSpeed:0.##}");
             }
             else

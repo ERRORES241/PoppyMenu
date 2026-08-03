@@ -97,7 +97,12 @@ namespace PoppyMenu
             if (Input.GetKeyDown(ModConfig.ToggleMenuKey.Value))
             {
                 MenuRoot.Visible = !MenuRoot.Visible;
-                if (!MenuRoot.Visible) { ListPicker.Close(); MenuRoot.SaveLayout(); }
+                if (!MenuRoot.Visible)
+                {
+                    ListPicker.Close();
+                    MenuRoot.SaveLayout();
+                    ModConfig.Save();
+                }
             }
 
             BindStore.Poll();
@@ -134,6 +139,7 @@ namespace PoppyMenu
 
             MenuRoot.Visible = false;
             ListPicker.Close();
+            try { ModConfig.Save(); } catch { }
             try { InputCapture.Shutdown(); } catch { }
             try { Aim.Shutdown(); } catch { }
             try { Safety.Shutdown(); } catch { }
