@@ -85,8 +85,8 @@ namespace PoppyMenu
         internal static float Slider(string label, float value, float min, float max)
         {
             GUILayout.BeginHorizontal();
-            GUILayout.Label($"{label}: {value:0.##}", Theme.Label, GUILayout.MinWidth(120));
-            value = GUILayout.HorizontalSlider(value, min, max, GUILayout.MinWidth(110), GUILayout.Height(18));
+            GUILayout.Label($"{label}: {value:0.##}", Theme.Label, GUILayout.Width(130));
+            value = GUILayout.HorizontalSlider(value, min, max, GUILayout.ExpandWidth(true), GUILayout.Height(18));
             GUILayout.EndHorizontal();
             return value;
         }
@@ -95,8 +95,14 @@ namespace PoppyMenu
 
         internal static void SectionBegin(string title)
         {
+            GUILayout.Space(2);
             GUILayout.BeginVertical(Theme.Card);
             OpenSections++;
+
+            Rect r = GUILayoutUtility.GetRect(1, 2, GUILayout.ExpandWidth(true));
+            Theme.Fill(new Rect(r.x, r.y, r.width, 2), Theme.Accent2);
+            GUILayout.Space(4);
+
             if (!string.IsNullOrEmpty(title))
                 GUILayout.Label(title.ToUpperInvariant(), Theme.SubHeader);
         }
@@ -106,6 +112,7 @@ namespace PoppyMenu
             if (OpenSections <= 0) return;
             GUILayout.EndVertical();
             OpenSections--;
+            GUILayout.Space(2);
         }
 
         internal static void KeybindRow(string label, ConfigEntry<KeyCode> entry)
@@ -114,11 +121,11 @@ namespace PoppyMenu
             GUILayout.Label(label, Theme.Label, GUILayout.MinWidth(96));
             bool listening = Rebind.Listening == entry;
             if (GUILayout.Button(listening ? "press a key/button..." : entry.Value.ToString(),
-                                 listening ? Theme.Primary : Theme.Button, GUILayout.Height(24)))
+                                 listening ? Theme.Primary : Theme.Button, GUILayout.Height(24), GUILayout.ExpandWidth(true)))
             {
                 if (listening) Rebind.Cancel(); else Rebind.Capture(entry);
             }
-            if (GUILayout.Button("X", Theme.Button, GUILayout.Width(24)))
+            if (GUILayout.Button("X", Theme.Button, GUILayout.Width(26), GUILayout.Height(24)))
             {
                 entry.Value = KeyCode.None;
                 if (listening) Rebind.Cancel();

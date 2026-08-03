@@ -10,12 +10,10 @@
     <Nullable>disable</Nullable>
     <RootNamespace>PoppyMenu</RootNamespace>
 
-    <!-- BepInEx plugin metadata feeds PluginInfo via BepInEx.PluginInfoProps -->
     <BepInExPluginGuid>com.poppy.poppymenu</BepInExPluginGuid>
     <BepInExPluginName>Poppy Menu</BepInExPluginName>
     <BepInExPluginVersion>$(Version)</BepInExPluginVersion>
 
-    <!-- Keep the build quiet: publicized refs + Unity refs generate a lot of noise -->
     <NoWarn>$(NoWarn);CS0436;CS0618;CS0612;NU1701;MSB3277</NoWarn>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
@@ -32,9 +30,9 @@
     <PackageReference Include="UnityEngine.Modules" Version="2021.3.33" IncludeAssets="compile" PrivateAssets="all" />
   </ItemGroup>
 
-  <!-- Exclude the reflection/dev tooling folder from the plugin build -->
   <ItemGroup>
     <Compile Remove="tools/**/*.cs" />
+    <Compile Remove="src/**/*.cs" />
   </ItemGroup>
 
 </Project>

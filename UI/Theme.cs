@@ -45,7 +45,7 @@ namespace PoppyMenu
                       hov = Solid(Hovered), accent = Solid(Accent), accentDim = Solid(new Color(Accent.r, Accent.g, Accent.b, 0.35f)),
                       on = Solid(On), danger = Solid(Danger);
 
-            Window = new GUIStyle(GUI.skin.box) { padding = new RectOffset(0, 0, 0, 0), border = new RectOffset(2, 2, 2, 2) };
+            Window = new GUIStyle(GUI.skin.box) { padding = new RectOffset(6, 6, 6, 6), border = new RectOffset(4, 4, 4, 4) };
             Window.normal.background = win;
 
             Header = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold, fontSize = 15, alignment = TextAnchor.MiddleLeft };
@@ -85,7 +85,7 @@ namespace PoppyMenu
             SideItemActive.normal.background = card; SideItemActive.normal.textColor = Color.white;
             SideItemActive.fontStyle = FontStyle.Bold;
 
-            SwitchOn = new GUIStyle(Button) { alignment = TextAnchor.MiddleLeft, padding = new RectOffset(10, 10, 7, 7) };
+            SwitchOn = new GUIStyle(Button) { alignment = TextAnchor.MiddleLeft, padding = new RectOffset(10, 52, 7, 7) };
             SwitchOn.normal.background = Solid(new Color(On.r, On.g, On.b, 0.22f));
             SwitchOn.hover.background = Solid(new Color(On.r, On.g, On.b, 0.32f));
             SwitchOn.normal.textColor = Color.white;
@@ -95,7 +95,7 @@ namespace PoppyMenu
             SwitchOff.hover.background = hov;
             SwitchOff.normal.textColor = TextDim;
 
-            Card = new GUIStyle(GUI.skin.box) { padding = new RectOffset(10, 10, 8, 10), margin = new RectOffset(0, 0, 4, 4) };
+            Card = new GUIStyle(GUI.skin.box) { padding = new RectOffset(12, 12, 10, 10), margin = new RectOffset(0, 0, 6, 6) };
             Card.normal.background = card;
 
             Search = new GUIStyle(GUI.skin.textField) { fontSize = 12, padding = new RectOffset(8, 8, 6, 6) };

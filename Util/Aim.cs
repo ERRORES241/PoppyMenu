@@ -21,6 +21,9 @@ namespace PoppyMenu
         internal static bool Highlight = true;
         internal static bool ShowFovCircle;
         internal static bool MagicBullet;
+        internal static bool TargetWeakPoints = true;
+        internal static bool NoSpread;
+        internal static bool NoRecoil;
 
         private static Harmony _h;
         private static GUIStyle _label;
@@ -35,6 +38,31 @@ namespace PoppyMenu
 
             var initProj = AccessTools.Method(typeof(ProjectileManager), nameof(ProjectileManager.InitializeProjectile));
             if (initProj != null) _h.Patch(initProj, postfix: new HarmonyMethod(typeof(Aim), nameof(InitProjectilePostfix)));
+
+            var applySpread = AccessTools.Method(typeof(Util), nameof(Util.ApplySpread), new[] { typeof(Vector3), typeof(float), typeof(float), typeof(float), typeof(float), typeof(float), typeof(float) });
+            if (applySpread != null) _h.Patch(applySpread, prefix: new HarmonyMethod(typeof(Aim), nameof(ApplySpreadPrefix)));
+
+            var addRecoil = AccessTools.Method(typeof(CameraTargetParams), nameof(CameraTargetParams.AddRecoil), new[] { typeof(float), typeof(float), typeof(float), typeof(float) });
+            if (addRecoil != null) _h.Patch(addRecoil, prefix: new HarmonyMethod(typeof(Aim), nameof(AddRecoilPrefix)));
+        }
+
+        private static bool ApplySpreadPrefix(Vector3 aimDirection, ref Vector3 __result)
+        {
+            if (NoSpread)
+            {
+                __result = aimDirection.normalized;
+                return false;
+            }
+            return true;
+        }
+
+        private static bool AddRecoilPrefix()
+        {
+            if (NoRecoil)
+            {
+                return false;
+            }
+            return true;
         }
 
         internal static void Shutdown() { Target = null; _h?.UnpatchSelf(); _h = null; }
@@ -46,6 +74,77 @@ namespace PoppyMenu
             if (!Active || !PlayerContext.HasBody) { Target = null; return; }
 
             UpdateTarget();
+        }
+
+        private static HurtBox GetTargetHurtBox(CharacterBody body, bool preferWeakPoint)
+        {
+            if (body == null) return null;
+            HurtBox main = Util.FindBodyMainHurtBox(body);
+
+            if (preferWeakPoint)
+            {
+                if (main != null && main.hurtBoxGroup != null && main.hurtBoxGroup.hurtBoxes != null)
+                {
+                    foreach (HurtBox hb in main.hurtBoxGroup.hurtBoxes)
+                    {
+                        if (hb != null && hb.gameObject.activeInHierarchy && hb.isSniperTarget)
+                            return hb;
+                    }
+                }
+
+                if (body.modelLocator != null && body.modelLocator.modelTransform != null)
+                {
+                    HurtBoxGroup hbg = body.modelLocator.modelTransform.GetComponent<HurtBoxGroup>();
+                    if (hbg != null && hbg.hurtBoxes != null)
+                    {
+                        foreach (HurtBox hb in hbg.hurtBoxes)
+                        {
+                            if (hb != null && hb.gameObject.activeInHierarchy && hb.isSniperTarget)
+                                return hb;
+                        }
+                    }
+                }
+
+                try
+                {
+                    var list = HurtBox.readOnlySniperTargetsList;
+                    if (list != null)
+                    {
+                        foreach (HurtBox hb in list)
+                        {
+                            if (hb != null && hb.gameObject.activeInHierarchy && hb.healthComponent != null && hb.healthComponent.body == body)
+                            {
+                                return hb;
+                            }
+                        }
+                    }
+                }
+                catch { }
+
+                if (main != null && main.hurtBoxGroup != null && main.hurtBoxGroup.hurtBoxes != null)
+                {
+                    foreach (HurtBox hb in main.hurtBoxGroup.hurtBoxes)
+                    {
+                        if (hb != null && hb.gameObject.activeInHierarchy && hb.damageModifier == HurtBox.DamageModifier.Weak)
+                            return hb;
+                    }
+                }
+            }
+
+            return main;
+        }
+
+        private static bool IsRailgunner(CharacterBody me)
+        {
+            if (me == null) return false;
+            BodyIndex railgunnerIndex = BodyCatalog.FindBodyIndex("RailgunnerBody");
+            if (railgunnerIndex != BodyIndex.None && me.bodyIndex == railgunnerIndex)
+                return true;
+            if (!string.IsNullOrEmpty(me.name) && me.name.IndexOf("Railgunner", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+            if (!string.IsNullOrEmpty(me.baseNameToken) && me.baseNameToken.IndexOf("RAILGUNNER", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+            return false;
         }
 
         private static void UpdateTarget()
@@ -62,10 +161,12 @@ namespace PoppyMenu
             float bestScore = float.MaxValue;
             bool bestIsBoss = false;
 
+            bool preferWeakPoint = TargetWeakPoints && IsRailgunner(me);
+
             foreach (CharacterBody body in CharacterBody.readOnlyInstancesList)
             {
                 if (!IsHostile(me, myTeam, body)) continue;
-                HurtBox hb = Util.FindBodyMainHurtBox(body);
+                HurtBox hb = GetTargetHurtBox(body, preferWeakPoint);
                 if (hb == null) continue;
 
                 Vector3 to = hb.transform.position - aim.origin;
@@ -126,10 +227,21 @@ namespace PoppyMenu
             if (!IsLocalOwner(__instance.owner)) return;
             if (MagicBullet)
                 __instance.stopperMask = LayerIndex.entityPrecise.mask;
+            if (NoSpread)
+            {
+                __instance.minSpread = 0f;
+                __instance.maxSpread = 0f;
+                __instance.spreadPitchScale = 0f;
+                __instance.spreadYawScale = 0f;
+            }
             if (Active && Target != null)
             {
                 Vector3 dir = Target.transform.position - __instance.origin;
                 if (dir.sqrMagnitude > 0.001f) __instance.aimVector = dir.normalized;
+                if (TargetWeakPoints && Target.isSniperTarget && IsRailgunner(PlayerContext.Body))
+                {
+                    __instance.sniper = true;
+                }
             }
         }
 
@@ -181,17 +293,32 @@ namespace PoppyMenu
             GUI.Label(new Rect(sp.x - 40f, y - s - 16f, 80f, 14f), "LOCKED", _label);
         }
 
+        private static void DrawLine(Vector2 p1, Vector2 p2, Color color, float width)
+        {
+            Matrix4x4 prevMatrix = GUI.matrix;
+            Vector2 d = p2 - p1;
+            float angle = Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg;
+            float length = d.magnitude;
+
+            GUIUtility.RotateAroundPivot(angle, p1);
+            Theme.Fill(new Rect(p1.x, p1.y - width * 0.5f, length, width), color);
+            GUI.matrix = prevMatrix;
+        }
+
         private static void DrawFovCircle(Camera cam)
         {
             float r = Screen.height * 0.5f * Mathf.Tan(Fov * Mathf.Deg2Rad) / Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
             r = Mathf.Clamp(r, 8f, Screen.height);
             float cx = Screen.width * 0.5f, cy = Screen.height * 0.5f;
-            Color col = new Color(Theme.Accent.r, Theme.Accent.g, Theme.Accent.b, 0.5f);
-            const int seg = 48;
-            for (int i = 0; i < seg; i++)
+            Color col = new Color(Theme.Accent.r, Theme.Accent.g, Theme.Accent.b, 0.75f);
+            const int seg = 64;
+            Vector2 prevPoint = new Vector2(cx + r, cy);
+            for (int i = 1; i <= seg; i++)
             {
                 float a = i / (float)seg * Mathf.PI * 2f;
-                Theme.Fill(new Rect(cx + Mathf.Cos(a) * r - 1f, cy + Mathf.Sin(a) * r - 1f, 2f, 2f), col);
+                Vector2 nextPoint = new Vector2(cx + Mathf.Cos(a) * r, cy + Mathf.Sin(a) * r);
+                DrawLine(prevPoint, nextPoint, col, 1.5f);
+                prevPoint = nextPoint;
             }
         }
     }

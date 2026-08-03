@@ -18,7 +18,11 @@ Organized into tabs, with sub-pages where it makes sense.
 ### Player
 Sub-pages: Combat, Aimbot, Stats, Move.
 - Combat: god mode, buddha (survive lethal hits), infinite skills, heal to full or by an amount, hurt yourself, respawn, give money/XP/lunar coins, and give or remove any buff, timed buffs, or any damage-over-time effect
-- Aimbot: silent aim that hits the target closest to your crosshair on any survivor without your camera moving (works on hitscan, yes including Railgunner, and on projectiles). Target priority (crosshair, distance, low HP, high HP), prioritize bosses, sticky target, line-of-sight check, range and FOV limits, automatic homing projectiles, magic bullet (your shots pass through walls, enemies don't), target highlight, optional FOV circle, and a bindable hold-to-aim key
+- Aimbot: silent aim that hits the target closest to your crosshair on any survivor without your camera moving (works on hitscan, yes including Railgunner, and on projectiles).
+  - **Railgunner Weak Point Targeting:** Automatically locks onto enemy red critical weak points (`isSniperTarget`) when playing as Railgunner, delivering 100% critical hits.
+  - **No Spread:** Eliminates all bullet and projectile spread across all survivor skills and weapons.
+  - **No Recoil:** Suppresses camera recoil and kickback when firing weapons.
+  - **Visuals:** Target priority (crosshair, distance, low HP, high HP), prioritize bosses, sticky target, line-of-sight check, range and FOV limits, automatic homing projectiles, magic bullet (shots pass through walls), target highlight, smooth continuous FOV circle, and a bindable hold-to-aim key
 - Stats: multipliers for damage, attack speed, move speed, armor, crit, and max health, with a live readout
 - Move: flight, no-clip, always sprint, jump pack. You can still shoot and use skills while flying
 

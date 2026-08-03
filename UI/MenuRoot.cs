@@ -54,6 +54,14 @@ namespace PoppyMenu
             ModConfig.WindowH.Value = _rect.height;
         }
 
+        internal static bool ContainsPoint(Vector2 screenPoint)
+        {
+            if (!Visible) return false;
+            float scale = Mathf.Max(0.1f, ModConfig.UiScale.Value);
+            Rect scaledRect = new Rect(_rect.x * scale, _rect.y * scale, _rect.width * scale, _rect.height * scale);
+            return scaledRect.Contains(screenPoint);
+        }
+
         internal static void ResetPosition()
         {
             _rect = new Rect(40, 60, 540, 600);
@@ -168,7 +176,8 @@ namespace PoppyMenu
 
         private static void DrawSidebar()
         {
-            GUILayout.BeginVertical(_sidebar, GUILayout.Width(132), GUILayout.Height(_rect.height - 86));
+            float sideH = Mathf.Max(100f, _rect.height - 96f);
+            GUILayout.BeginVertical(_sidebar, GUILayout.Width(132), GUILayout.Height(sideH));
             _sideScroll = GUILayout.BeginScrollView(_sideScroll, GUILayout.Width(132));
             for (int i = 0; i < _groups.Count; i++)
             {
@@ -204,7 +213,8 @@ namespace PoppyMenu
             }
 
             PoppyModule page = group.Pages[group.Page];
-            _scroll = GUILayout.BeginScrollView(_scroll, GUILayout.Height(_rect.height - 86 - (hasSubNav ? 30 : 0)));
+            float contentH = Mathf.Max(100f, _rect.height - 96f - (hasSubNav ? 32f : 0f));
+            _scroll = GUILayout.BeginScrollView(_scroll, GUILayout.Height(contentH));
             Widgets.OpenSections = 0;
             try
             {

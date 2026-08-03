@@ -35,6 +35,14 @@ namespace PoppyMenu
 
         internal static void Close() => _open = false;
 
+        internal static bool ContainsPoint(Vector2 screenPoint)
+        {
+            if (!_open) return false;
+            float scale = Mathf.Max(0.1f, ModConfig.UiScale.Value);
+            Rect scaledRect = new Rect(_rect.x * scale, _rect.y * scale, _rect.width * scale, _rect.height * scale);
+            return scaledRect.Contains(screenPoint);
+        }
+
         internal static void Draw()
         {
             if (!_open) return;

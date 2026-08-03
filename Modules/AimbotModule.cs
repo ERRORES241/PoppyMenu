@@ -32,6 +32,8 @@ namespace PoppyMenu
             GUILayout.EndHorizontal();
 
             Aim.PrioritizeBosses = Widgets.Toggle("Prioritize Bosses", Aim.PrioritizeBosses);
+            Aim.TargetWeakPoints = Widgets.Toggle("Railgunner: Target Weak Points", Aim.TargetWeakPoints);
+            Widgets.Hint("When scoped as Railgunner, aims at red weak points for guaranteed crits.");
             Aim.Sticky = Widgets.Toggle("Sticky Target", Aim.Sticky);
             Widgets.Hint("Keeps one target until it dies or leaves range.");
             Aim.RequireLoS = Widgets.Toggle("Require Line of Sight", Aim.RequireLoS);
@@ -46,6 +48,13 @@ namespace PoppyMenu
             Widgets.Hint("Your projectiles automatically curve onto the locked target. Host or solo.");
             Aim.MagicBullet = Widgets.Toggle("Magic Bullet (shoot through walls)", Aim.MagicBullet);
             Widgets.Hint("Your shots pass through walls. Enemies don't. Host or solo.");
+            Widgets.SectionEnd();
+
+            Widgets.SectionBegin("Weapon Handling");
+            Aim.NoSpread = Widgets.Toggle("No Spread (Perfect Accuracy)", Aim.NoSpread);
+            Widgets.Hint("Eliminates bullet and projectile spread on all weapons.");
+            Aim.NoRecoil = Widgets.Toggle("No Recoil (Fixed Camera)", Aim.NoRecoil);
+            Widgets.Hint("Prevents camera kickback when firing skills.");
             Widgets.SectionEnd();
 
             Widgets.SectionBegin("Visuals");

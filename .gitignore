@@ -1,5 +1,7 @@
 bin/
 obj/
+src/
+tools/
 *.user
 .vs/
 .idea/
@@ -8,6 +10,3 @@ dist/
 *.pdb
 .DS_Store
 Thumbs.db
-
-# Internal dev scaffolding, not part of the mod
-tools/

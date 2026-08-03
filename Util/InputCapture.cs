@@ -3,6 +3,7 @@ using HarmonyLib;
 using RoR2;
 using RoR2.UI;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace PoppyMenu
 {
@@ -19,6 +20,28 @@ namespace PoppyMenu
             var update = AccessTools.Method(typeof(PlayerCharacterMasterController), "Update");
             if (update != null)
                 _h.Patch(update, prefix: new HarmonyMethod(typeof(InputCapture), nameof(PcmcUpdatePrefix)));
+
+            var raycastAll = AccessTools.Method(typeof(EventSystem), nameof(EventSystem.RaycastAll));
+            if (raycastAll != null)
+                _h.Patch(raycastAll, prefix: new HarmonyMethod(typeof(InputCapture), nameof(EventSystemRaycastAllPrefix)));
+        }
+
+        internal static bool IsMouseOverUI()
+        {
+            Vector2 mousePos = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
+            if (MenuRoot.Visible && MenuRoot.ContainsPoint(mousePos)) return true;
+            if (ListPicker.IsOpen && ListPicker.ContainsPoint(mousePos)) return true;
+            return false;
+        }
+
+        private static bool EventSystemRaycastAllPrefix(PointerEventData eventData, List<RaycastResult> raycastResults)
+        {
+            if (IsMouseOverUI())
+            {
+                raycastResults.Clear();
+                return false;
+            }
+            return true;
         }
 
         internal static void Sync(bool want)
