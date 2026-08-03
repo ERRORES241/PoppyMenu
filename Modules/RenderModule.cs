@@ -25,7 +25,6 @@ namespace PoppyMenu
         internal static Color TeleporterColor = Color.yellow;
 
         private static GUIStyle _labelStyle;
-        private static SceneExitController[] _portals = new SceneExitController[0];
         private static PressurePlateController[] _plates = new PressurePlateController[0];
         private static SceneDef _lastStageScene;
 
@@ -49,7 +48,6 @@ namespace PoppyMenu
         {
             try
             {
-                _portals = Object.FindObjectsOfType<SceneExitController>();
                 _plates = Object.FindObjectsOfType<PressurePlateController>();
             }
             catch { }
@@ -60,7 +58,7 @@ namespace PoppyMenu
             Widgets.SectionBegin("ESP / Wallhack");
             EspMobs = Widgets.Toggle("Enemies", EspMobs);
             EspInteractables = Widgets.Toggle("Interactables (Chests, Barrels, Pickups)", EspInteractables);
-            EspTeleporter = Widgets.Toggle("Teleporter & Portals", EspTeleporter);
+            EspTeleporter = Widgets.Toggle("Teleporter", EspTeleporter);
             Widgets.Hint("Markers draw through walls while in a run.");
             Widgets.SectionEnd();
 
@@ -201,46 +199,9 @@ namespace PoppyMenu
                             DrawMarker(cam, tp, label, TeleporterColor);
                         }
                     }
-
-                    for (int i = 0; i < _portals.Length; i++)
-                    {
-                        SceneExitController portal = _portals[i];
-                        if (portal == null || portal.transform == null) continue;
-                        if (Culled(origin, portal.transform.position, out float dist)) continue;
-
-                        string pLabel = GetPortalLabel(portal, dist, out Color portalCol);
-                        DrawMarker(cam, portal.transform.position, pLabel, portalCol);
-                    }
                 }
             }
             catch { }
-        }
-
-        private static string GetPortalLabel(SceneExitController sec, float dist, out Color color)
-        {
-            color = new Color(0.3f, 0.85f, 0.95f);
-            string name = "Portal";
-
-            if (sec != null)
-            {
-                if (sec.isColossusPortal)
-                {
-                    name = "Colossus Portal";
-                    color = new Color(0.95f, 0.5f, 0.2f);
-                }
-                else if (sec.destinationScene != null)
-                {
-                    string sceneName = sec.destinationScene.baseSceneName;
-                    if (sceneName == "bazaar") { name = "Blue Portal (Bazaar)"; color = new Color(0.25f, 0.65f, 1.0f); }
-                    else if (sceneName == "goldshores") { name = "Gold Portal (Gilded Coast)"; color = new Color(1.0f, 0.85f, 0.2f); }
-                    else if (sceneName == "mysteryspace") { name = "Celestial Portal"; color = new Color(0.85f, 0.95f, 1.0f); }
-                    else if (sceneName == "voidstage" || sceneName == "voidraid") { name = "Void Portal"; color = new Color(0.8f, 0.25f, 0.95f); }
-                    else name = $"{sec.destinationScene.baseSceneName} Portal";
-                }
-            }
-
-            string distStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
-            return BuildMultiLine(ShowNames ? name : "", "", distStr);
         }
 
         private static bool IsCommandArtifactActive()
