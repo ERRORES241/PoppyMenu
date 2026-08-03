@@ -27,19 +27,32 @@ namespace PoppyMenu
         private static GUIStyle _labelStyle;
         private static SceneExitController[] _portals = new SceneExitController[0];
         private static PressurePlateController[] _plates = new PressurePlateController[0];
-        private static float _nextSceneScan;
+        private static SceneDef _lastStageScene;
 
         internal override void Tick()
         {
-            if (EspTeleporter || EspInteractables)
+            if (!PlayerContext.InGame)
             {
-                if (Time.realtimeSinceStartup >= _nextSceneScan)
-                {
-                    _nextSceneScan = Time.realtimeSinceStartup + 3.0f;
-                    _portals = Object.FindObjectsOfType<SceneExitController>();
-                    _plates = Object.FindObjectsOfType<PressurePlateController>();
-                }
+                _lastStageScene = null;
+                return;
             }
+
+            SceneDef currentScene = Stage.instance != null ? Stage.instance.sceneDef : null;
+            if (currentScene != _lastStageScene)
+            {
+                _lastStageScene = currentScene;
+                RefreshStageObjects();
+            }
+        }
+
+        internal static void RefreshStageObjects()
+        {
+            try
+            {
+                _portals = Object.FindObjectsOfType<SceneExitController>();
+                _plates = Object.FindObjectsOfType<PressurePlateController>();
+            }
+            catch { }
         }
 
         internal override void DrawMenu()

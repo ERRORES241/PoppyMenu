@@ -37,6 +37,7 @@ namespace PoppyMenu
         internal static ConfigEntry<bool> BossesOnly;
         internal static ConfigEntry<bool> CheckLos;
         internal static ConfigEntry<bool> MagicBullet;
+        internal static ConfigEntry<bool> UseFov;
         internal static ConfigEntry<bool> DrawFov;
         internal static ConfigEntry<float> FovRadius;
         internal static ConfigEntry<float> MaxRange;
@@ -117,6 +118,7 @@ namespace PoppyMenu
             BossesOnly = cfg.Bind("Aimbot", "BossesOnly", false, "Target bosses only.");
             CheckLos = cfg.Bind("Aimbot", "CheckLos", true, "Check line of sight.");
             MagicBullet = cfg.Bind("Aimbot", "MagicBullet", false, "Shots pass through terrain.");
+            UseFov = cfg.Bind("Aimbot", "UseFov", false, "Limit aimbot to FOV cone.");
             DrawFov = cfg.Bind("Aimbot", "DrawFov", false, "Draw FOV circle.");
             FovRadius = cfg.Bind("Aimbot", "FovRadius", 150f, "FOV circle radius.");
             MaxRange = cfg.Bind("Aimbot", "MaxRange", 400f, "Aimbot max range.");
@@ -182,6 +184,7 @@ namespace PoppyMenu
             Aim.PrioritizeBosses = BossesOnly.Value;
             Aim.RequireLoS = CheckLos.Value;
             Aim.MagicBullet = MagicBullet.Value;
+            Aim.UseFov = UseFov.Value;
             Aim.ShowFovCircle = DrawFov.Value;
             Aim.Fov = FovRadius.Value;
             Aim.MaxRange = MaxRange.Value;
@@ -236,6 +239,7 @@ namespace PoppyMenu
             BossesOnly.Value = Aim.PrioritizeBosses;
             CheckLos.Value = Aim.RequireLoS;
             MagicBullet.Value = Aim.MagicBullet;
+            UseFov.Value = Aim.UseFov;
             DrawFov.Value = Aim.ShowFovCircle;
             FovRadius.Value = Aim.Fov;
             MaxRange.Value = Aim.MaxRange;

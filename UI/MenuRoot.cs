@@ -250,10 +250,20 @@ namespace PoppyMenu
             }
 
             List<string> active = ActiveEffects();
-            const float pad = 8f, titleH = 20f, lineH = 16f, width = 220f;
-            float h = pad * 2f + titleH + active.Count * lineH;
+            if (active.Count == 0) return;
 
-            GUILayout.BeginArea(new Rect(10, 10, width, h), _hudBox);
+            float maxW = 140f;
+            foreach (string e in active)
+            {
+                Vector2 s = _hudLine.CalcSize(new GUIContent("* " + e));
+                if (s.x > maxW) maxW = s.x;
+            }
+
+            float width = maxW + 28f;
+            const float pad = 8f, titleH = 20f, lineH = 16f;
+            float h = pad * 2f + titleH + active.Count * lineH + 4f;
+
+            GUILayout.BeginArea(new Rect(12, 12, width, h), _hudBox);
             GUILayout.Label("<b><color=#F0584E>POPPY</color></b>  <size=10><color=#8A8A99>[" + ModConfig.ToggleMenuKey.Value + "]</color></size>",
                 _hudTitle, GUILayout.Height(titleH));
             foreach (string e in active)

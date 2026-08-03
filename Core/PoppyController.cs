@@ -16,14 +16,13 @@ namespace PoppyMenu
         private void Awake()
         {
             _groups.Add(new TabGroup("Home", new HomeModule()));
-            _groups.Add(new TabGroup("Player", new PlayerModule(), new AimbotModule(), new StatsModule(), new MovementModule()));
-            _groups.Add(new TabGroup("Items", new ItemsModule()));
-            _groups.Add(new TabGroup("Character", new CharacterModule()));
-            _groups.Add(new TabGroup("World", new WorldModule(), new SpawnModule(), new RunModule(), new TeleporterModule()));
-            _groups.Add(new TabGroup("Players", new PlayersModule()));
+            _groups.Add(new TabGroup("Combat", new AimbotModule(), new PlayerModule()));
             _groups.Add(new TabGroup("Visuals", new RenderModule()));
-            _groups.Add(new TabGroup("Console", new ConsoleModule()));
-            _groups.Add(new TabGroup("Settings", new SettingsModule(), new KeybindsModule(), new ConfigsModule(), new MacrosModule()));
+            _groups.Add(new TabGroup("Movement", new MovementModule()));
+            _groups.Add(new TabGroup("Stats & Items", new StatsModule(), new ItemsModule(), new CharacterModule()));
+            _groups.Add(new TabGroup("World", new WorldModule(), new TeleporterModule(), new SpawnModule(), new RunModule()));
+            _groups.Add(new TabGroup("Lobby", new PlayersModule()));
+            _groups.Add(new TabGroup("Configs", new ConfigsModule(), new KeybindsModule(), new SettingsModule(), new MacrosModule(), new ConsoleModule()));
 
             foreach (TabGroup g in _groups) _modules.AddRange(g.Pages);
 
@@ -101,7 +100,6 @@ namespace PoppyMenu
                 {
                     ListPicker.Close();
                     MenuRoot.SaveLayout();
-                    ModConfig.Save();
                 }
             }
 
@@ -139,7 +137,6 @@ namespace PoppyMenu
 
             MenuRoot.Visible = false;
             ListPicker.Close();
-            try { ModConfig.Save(); } catch { }
             try { InputCapture.Shutdown(); } catch { }
             try { Aim.Shutdown(); } catch { }
             try { Safety.Shutdown(); } catch { }
