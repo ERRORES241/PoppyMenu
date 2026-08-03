@@ -26,6 +26,10 @@ namespace PoppyMenu
 
         private static GUIStyle _labelStyle;
         private static PurchaseInteraction[] _interactables = new PurchaseInteraction[0];
+        private static BarrelInteraction[] _barrels = new BarrelInteraction[0];
+        private static PressurePlateController[] _pressurePlates = new PressurePlateController[0];
+        private static TimedChestController[] _timedChests = new TimedChestController[0];
+        private static SceneExitController[] _portals = new SceneExitController[0];
         private static float _nextScan;
 
         internal override void Tick()
@@ -33,6 +37,10 @@ namespace PoppyMenu
             if (EspInteractables && Time.realtimeSinceStartup >= _nextScan)
             {
                 _interactables = Object.FindObjectsOfType<PurchaseInteraction>();
+                _barrels = Object.FindObjectsOfType<BarrelInteraction>();
+                _pressurePlates = Object.FindObjectsOfType<PressurePlateController>();
+                _timedChests = Object.FindObjectsOfType<TimedChestController>();
+                _portals = Object.FindObjectsOfType<SceneExitController>();
                 _nextScan = Time.realtimeSinceStartup + 0.5f;
             }
         }
@@ -41,8 +49,8 @@ namespace PoppyMenu
         {
             Widgets.SectionBegin("ESP / Wallhack");
             EspMobs = Widgets.Toggle("Enemies", EspMobs);
-            EspInteractables = Widgets.Toggle("Interactables", EspInteractables);
-            EspTeleporter = Widgets.Toggle("Teleporter", EspTeleporter);
+            EspInteractables = Widgets.Toggle("Interactables (Chests, Barrels, Pickups)", EspInteractables);
+            EspTeleporter = Widgets.Toggle("Teleporter & Portals", EspTeleporter);
             Widgets.Hint("Markers draw through walls while in a run.");
             Widgets.SectionEnd();
 
@@ -89,6 +97,7 @@ namespace PoppyMenu
 
                 if (EspInteractables)
                 {
+                    // 1. PurchaseInteractions (Chests, Multishops, Printers, Shrines, Lunar Pods)
                     foreach (PurchaseInteraction pi in _interactables)
                     {
                         if (pi == null || !pi.available) continue;
@@ -98,6 +107,43 @@ namespace PoppyMenu
                         DrawMarker(cam, pi.transform.position, label, itemCol);
                     }
 
+                    // 2. Barrels (Money & Health Barrels)
+                    foreach (BarrelInteraction barrel in _barrels)
+                    {
+                        if (barrel == null || barrel.opened) continue;
+                        if (Culled(origin, barrel.transform.position, out float dist)) continue;
+
+                        string bName = ShowNames ? "Barrel ($0)" : "";
+                        string dStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
+                        string label = BuildMultiLine(bName, "", dStr);
+                        DrawMarker(cam, barrel.transform.position, label, new Color(0.85f, 0.82f, 0.55f));
+                    }
+
+                    // 3. Secret Pressure Plates (Aqueduct Buttons)
+                    foreach (PressurePlateController plate in _pressurePlates)
+                    {
+                        if (plate == null) continue;
+                        if (Culled(origin, plate.transform.position, out float dist)) continue;
+
+                        string pName = ShowNames ? "Secret Button" : "";
+                        string dStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
+                        string label = BuildMultiLine(pName, "", dStr);
+                        DrawMarker(cam, plate.transform.position, label, new Color(0.2f, 0.9f, 0.8f));
+                    }
+
+                    // 4. Timed Chest (10-minute Rallypoint Delta Chest)
+                    foreach (TimedChestController timed in _timedChests)
+                    {
+                        if (timed == null) continue;
+                        if (Culled(origin, timed.transform.position, out float dist)) continue;
+
+                        string tName = ShowNames ? "Timed Chest" : "";
+                        string dStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
+                        string label = BuildMultiLine(tName, "[Legendary]", dStr);
+                        DrawMarker(cam, timed.transform.position, label, new Color(0.9f, 0.22f, 0.29f));
+                    }
+
+                    // 5. Ground Pickups & Coins
                     var pickups = InstanceTracker.GetInstancesList<GenericPickupController>();
                     if (pickups != null)
                     {
@@ -112,17 +158,58 @@ namespace PoppyMenu
                     }
                 }
 
-                if (EspTeleporter && TeleporterInteraction.instance != null)
+                if (EspTeleporter)
                 {
-                    Vector3 tp = TeleporterInteraction.instance.transform.position;
-                    if (!Culled(origin, tp, out float dist))
+                    // 1. Main Teleporter
+                    if (TeleporterInteraction.instance != null)
                     {
-                        string label = TeleporterMultiLineLabel(TeleporterInteraction.instance, dist);
-                        DrawMarker(cam, tp, label, TeleporterColor);
+                        Vector3 tp = TeleporterInteraction.instance.transform.position;
+                        if (!Culled(origin, tp, out float dist))
+                        {
+                            string label = TeleporterMultiLineLabel(TeleporterInteraction.instance, dist);
+                            DrawMarker(cam, tp, label, TeleporterColor);
+                        }
+                    }
+
+                    // 2. Portals (Blue, Gold, Celestial, Void, Colossus)
+                    foreach (SceneExitController portal in _portals)
+                    {
+                        if (portal == null) continue;
+                        if (Culled(origin, portal.transform.position, out float dist)) continue;
+
+                        string pLabel = GetPortalLabel(portal, dist, out Color portalCol);
+                        DrawMarker(cam, portal.transform.position, pLabel, portalCol);
                     }
                 }
             }
             catch { }
+        }
+
+        private static string GetPortalLabel(SceneExitController sec, float dist, out Color color)
+        {
+            color = new Color(0.3f, 0.85f, 0.95f);
+            string name = "Portal";
+
+            if (sec != null)
+            {
+                if (sec.isColossusPortal)
+                {
+                    name = "Colossus Portal";
+                    color = new Color(0.95f, 0.5f, 0.2f);
+                }
+                else if (sec.destinationScene != null)
+                {
+                    string sceneName = sec.destinationScene.baseSceneName;
+                    if (sceneName == "bazaar") { name = "Blue Portal (Bazaar)"; color = new Color(0.25f, 0.65f, 1.0f); }
+                    else if (sceneName == "goldshores") { name = "Gold Portal (Gilded Coast)"; color = new Color(1.0f, 0.85f, 0.2f); }
+                    else if (sceneName == "mysteryspace") { name = "Celestial Portal"; color = new Color(0.85f, 0.95f, 1.0f); }
+                    else if (sceneName == "voidstage" || sceneName == "voidraid") { name = "Void Portal"; color = new Color(0.8f, 0.25f, 0.95f); }
+                    else name = $"{sec.destinationScene.baseSceneName} Portal";
+                }
+            }
+
+            string distStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
+            return BuildMultiLine(ShowNames ? name : "", "", distStr);
         }
 
         private static bool IsCommandArtifactActive()
