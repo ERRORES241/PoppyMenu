@@ -25,23 +25,124 @@ namespace PoppyMenu
         internal static Color TeleporterColor = Color.yellow;
 
         private static GUIStyle _labelStyle;
-        private static PurchaseInteraction[] _interactables = new PurchaseInteraction[0];
-        private static BarrelInteraction[] _barrels = new BarrelInteraction[0];
-        private static PressurePlateController[] _pressurePlates = new PressurePlateController[0];
-        private static TimedChestController[] _timedChests = new TimedChestController[0];
-        private static SceneExitController[] _portals = new SceneExitController[0];
         private static float _nextScan;
+
+        private struct CachedInteractable
+        {
+            public Component Component;
+            public Transform Transform;
+            public string BaseName;
+            public string ItemContent;
+            public Color Color;
+            public bool IsPurchase;
+            public bool IsBarrel;
+            public PurchaseInteraction Purchase;
+            public BarrelInteraction Barrel;
+        }
+
+        private struct CachedPortal
+        {
+            public SceneExitController Controller;
+            public Transform Transform;
+            public string Label;
+            public Color Color;
+        }
+
+        private static readonly List<CachedInteractable> _cachedInteractables = new List<CachedInteractable>();
+        private static readonly List<CachedPortal> _cachedPortals = new List<CachedPortal>();
 
         internal override void Tick()
         {
-            if (EspInteractables && Time.realtimeSinceStartup >= _nextScan)
+            if (Time.realtimeSinceStartup >= _nextScan)
             {
-                _interactables = Object.FindObjectsOfType<PurchaseInteraction>();
-                _barrels = Object.FindObjectsOfType<BarrelInteraction>();
-                _pressurePlates = Object.FindObjectsOfType<PressurePlateController>();
-                _timedChests = Object.FindObjectsOfType<TimedChestController>();
-                _portals = Object.FindObjectsOfType<SceneExitController>();
-                _nextScan = Time.realtimeSinceStartup + 0.5f;
+                _nextScan = Time.realtimeSinceStartup + 2.0f;
+                RebuildCache();
+            }
+        }
+
+        private static void RebuildCache()
+        {
+            _cachedInteractables.Clear();
+            _cachedPortals.Clear();
+
+            if (!PlayerContext.InGame) return;
+
+            if (EspInteractables)
+            {
+                var purchases = Object.FindObjectsOfType<PurchaseInteraction>();
+                foreach (PurchaseInteraction pi in purchases)
+                {
+                    if (pi == null || !pi.available) continue;
+                    CachedInteractable item = new CachedInteractable
+                    {
+                        Component = pi,
+                        Transform = pi.transform,
+                        Purchase = pi,
+                        IsPurchase = true
+                    };
+                    GetInteractableStaticInfo(pi, out item.BaseName, out item.ItemContent, out item.Color);
+                    _cachedInteractables.Add(item);
+                }
+
+                var barrels = Object.FindObjectsOfType<BarrelInteraction>();
+                foreach (BarrelInteraction barrel in barrels)
+                {
+                    if (barrel == null || barrel.opened) continue;
+                    _cachedInteractables.Add(new CachedInteractable
+                    {
+                        Component = barrel,
+                        Transform = barrel.transform,
+                        Barrel = barrel,
+                        IsBarrel = true,
+                        BaseName = "Barrel ($0)",
+                        ItemContent = "",
+                        Color = new Color(0.85f, 0.82f, 0.55f)
+                    });
+                }
+
+                var plates = Object.FindObjectsOfType<PressurePlateController>();
+                foreach (PressurePlateController plate in plates)
+                {
+                    if (plate == null) continue;
+                    _cachedInteractables.Add(new CachedInteractable
+                    {
+                        Component = plate,
+                        Transform = plate.transform,
+                        BaseName = "Secret Button",
+                        ItemContent = "",
+                        Color = new Color(0.2f, 0.9f, 0.8f)
+                    });
+                }
+
+                var timedChests = Object.FindObjectsOfType<TimedChestController>();
+                foreach (TimedChestController timed in timedChests)
+                {
+                    if (timed == null) continue;
+                    _cachedInteractables.Add(new CachedInteractable
+                    {
+                        Component = timed,
+                        Transform = timed.transform,
+                        BaseName = "Timed Chest",
+                        ItemContent = "[Legendary]",
+                        Color = new Color(0.9f, 0.22f, 0.29f)
+                    });
+                }
+            }
+
+            if (EspTeleporter)
+            {
+                var portals = Object.FindObjectsOfType<SceneExitController>();
+                foreach (SceneExitController portal in portals)
+                {
+                    if (portal == null) continue;
+                    CachedPortal cp = new CachedPortal
+                    {
+                        Controller = portal,
+                        Transform = portal.transform
+                    };
+                    cp.Label = GetPortalStaticInfo(portal, out cp.Color);
+                    _cachedPortals.Add(cp);
+                }
             }
         }
 
@@ -82,8 +183,10 @@ namespace PoppyMenu
                     CharacterBody me = PlayerContext.Body;
                     TeamIndex myTeam = me != null && me.teamComponent != null ? me.teamComponent.teamIndex : TeamIndex.Player;
 
-                    foreach (CharacterBody body in CharacterBody.readOnlyInstancesList)
+                    var bodies = CharacterBody.readOnlyInstancesList;
+                    for (int i = 0; i < bodies.Count; i++)
                     {
+                        CharacterBody body = bodies[i];
                         if (body == null || body == me) continue;
                         if (body.healthComponent == null || !body.healthComponent.alive) continue;
                         if (body.teamComponent == null) continue;
@@ -98,59 +201,29 @@ namespace PoppyMenu
 
                 if (EspInteractables)
                 {
-                    // 1. PurchaseInteractions (Chests, Multishops, Printers, Shrines, Lunar Pods)
-                    foreach (PurchaseInteraction pi in _interactables)
+                    for (int i = 0; i < _cachedInteractables.Count; i++)
                     {
-                        if (pi == null || !pi.available) continue;
-                        if (Culled(origin, pi.transform.position, out float dist)) continue;
+                        CachedInteractable item = _cachedInteractables[i];
+                        if (item.Component == null || item.Transform == null) continue;
+                        if (item.IsPurchase && (item.Purchase == null || !item.Purchase.available)) continue;
+                        if (item.IsBarrel && (item.Barrel == null || item.Barrel.opened)) continue;
 
-                        string label = GetInteractableMultiLineLabel(pi, dist, out Color itemCol);
-                        DrawMarker(cam, pi.transform.position, label, itemCol);
-                    }
+                        if (Culled(origin, item.Transform.position, out float dist)) continue;
 
-                    // 2. Barrels (Money & Health Barrels)
-                    foreach (BarrelInteraction barrel in _barrels)
-                    {
-                        if (barrel == null || barrel.opened) continue;
-                        if (Culled(origin, barrel.transform.position, out float dist)) continue;
-
-                        string bName = ShowNames ? "Barrel ($0)" : "";
+                        string bName = ShowNames ? item.BaseName : "";
                         string dStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
-                        string label = BuildMultiLine(bName, "", dStr);
-                        DrawMarker(cam, barrel.transform.position, label, new Color(0.85f, 0.82f, 0.55f));
+                        string label = BuildMultiLine(bName, item.ItemContent, dStr);
+
+                        DrawMarker(cam, item.Transform.position, label, item.Color);
                     }
 
-                    // 3. Secret Pressure Plates (Aqueduct Buttons)
-                    foreach (PressurePlateController plate in _pressurePlates)
-                    {
-                        if (plate == null) continue;
-                        if (Culled(origin, plate.transform.position, out float dist)) continue;
-
-                        string pName = ShowNames ? "Secret Button" : "";
-                        string dStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
-                        string label = BuildMultiLine(pName, "", dStr);
-                        DrawMarker(cam, plate.transform.position, label, new Color(0.2f, 0.9f, 0.8f));
-                    }
-
-                    // 4. Timed Chest (10-minute Rallypoint Delta Chest)
-                    foreach (TimedChestController timed in _timedChests)
-                    {
-                        if (timed == null) continue;
-                        if (Culled(origin, timed.transform.position, out float dist)) continue;
-
-                        string tName = ShowNames ? "Timed Chest" : "";
-                        string dStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
-                        string label = BuildMultiLine(tName, "[Legendary]", dStr);
-                        DrawMarker(cam, timed.transform.position, label, new Color(0.9f, 0.22f, 0.29f));
-                    }
-
-                    // 5. Ground Pickups & Coins
                     var pickups = InstanceTracker.GetInstancesList<GenericPickupController>();
                     if (pickups != null)
                     {
-                        foreach (GenericPickupController gpc in pickups)
+                        for (int i = 0; i < pickups.Count; i++)
                         {
-                            if (gpc == null) continue;
+                            GenericPickupController gpc = pickups[i];
+                            if (gpc == null || gpc.transform == null) continue;
                             if (Culled(origin, gpc.transform.position, out float dist)) continue;
 
                             string label = GetPickupMultiLineLabel(gpc, dist, out Color itemCol);
@@ -161,7 +234,6 @@ namespace PoppyMenu
 
                 if (EspTeleporter)
                 {
-                    // 1. Main Teleporter
                     if (TeleporterInteraction.instance != null)
                     {
                         Vector3 tp = TeleporterInteraction.instance.transform.position;
@@ -172,21 +244,22 @@ namespace PoppyMenu
                         }
                     }
 
-                    // 2. Portals (Blue, Gold, Celestial, Void, Colossus)
-                    foreach (SceneExitController portal in _portals)
+                    for (int i = 0; i < _cachedPortals.Count; i++)
                     {
-                        if (portal == null) continue;
-                        if (Culled(origin, portal.transform.position, out float dist)) continue;
+                        CachedPortal portal = _cachedPortals[i];
+                        if (portal.Controller == null || portal.Transform == null) continue;
+                        if (Culled(origin, portal.Transform.position, out float dist)) continue;
 
-                        string pLabel = GetPortalLabel(portal, dist, out Color portalCol);
-                        DrawMarker(cam, portal.transform.position, pLabel, portalCol);
+                        string dStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
+                        string pLabel = BuildMultiLine(ShowNames ? portal.Label : "", "", dStr);
+                        DrawMarker(cam, portal.Transform.position, pLabel, portal.Color);
                     }
                 }
             }
             catch { }
         }
 
-        private static string GetPortalLabel(SceneExitController sec, float dist, out Color color)
+        private static string GetPortalStaticInfo(SceneExitController sec, out Color color)
         {
             color = new Color(0.3f, 0.85f, 0.95f);
             string name = "Portal";
@@ -208,9 +281,7 @@ namespace PoppyMenu
                     else name = $"{sec.destinationScene.baseSceneName} Portal";
                 }
             }
-
-            string distStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
-            return BuildMultiLine(ShowNames ? name : "", "", distStr);
+            return name;
         }
 
         private static bool IsCommandArtifactActive()
@@ -225,10 +296,12 @@ namespace PoppyMenu
             }
         }
 
-        private static string GetInteractableMultiLineLabel(PurchaseInteraction pi, float dist, out Color overrideColor)
+        private static void GetInteractableStaticInfo(PurchaseInteraction pi, out string baseName, out string contentStr, out Color overrideColor)
         {
             overrideColor = InteractableColor;
-            if (pi == null) return "";
+            baseName = "";
+            contentStr = "";
+            if (pi == null) return;
 
             bool isCloaked = (pi.name != null && (pi.name.IndexOf("Stealthed", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.IndexOf("Cloaked", System.StringComparison.OrdinalIgnoreCase) >= 0)) || pi.displayNameToken == "CHEST1STEALTHED_NAME";
 
@@ -249,8 +322,8 @@ namespace PoppyMenu
                 costStr = " ($0)";
             }
 
-            string baseName = ShowNames ? (isCloaked ? "Cloaked Chest" : pi.GetDisplayName()) : "";
-            if (string.IsNullOrEmpty(baseName) && ShowNames) baseName = pi.name.Replace("(Clone)", "").Trim();
+            baseName = isCloaked ? "Cloaked Chest" : pi.GetDisplayName();
+            if (string.IsNullOrEmpty(baseName)) baseName = pi.name.Replace("(Clone)", "").Trim();
             if (!string.IsNullOrEmpty(baseName)) baseName += costStr;
 
             if (isCloaked)
@@ -259,7 +332,6 @@ namespace PoppyMenu
             }
 
             PickupIndex pickupIndex = PickupIndex.none;
-
             ChestBehavior chest = pi.GetComponent<ChestBehavior>();
             if (chest != null)
             {
@@ -274,7 +346,6 @@ namespace PoppyMenu
                 }
             }
 
-            string contentStr = "";
             if (pickupIndex != PickupIndex.none)
             {
                 string contentName = GetPickupContentInfo(pickupIndex, out Color itemColor);
@@ -285,10 +356,6 @@ namespace PoppyMenu
                     contentStr = $"[{contentName}]";
                 }
             }
-
-            string distStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
-
-            return BuildMultiLine(baseName, contentStr, distStr);
         }
 
         private static string GetPickupMultiLineLabel(GenericPickupController gpc, float dist, out Color overrideColor)
@@ -407,29 +474,31 @@ namespace PoppyMenu
                 _labelStyle = new GUIStyle(GUI.skin.label)
                 {
                     alignment = TextAnchor.UpperCenter,
-                    fontStyle = FontStyle.Bold
+                    fontStyle = FontStyle.Bold,
+                    wordWrap = false
                 };
             }
 
             int fSize = Mathf.Clamp(Mathf.RoundToInt(FontSize), 8, 30);
             _labelStyle.fontSize = fSize;
 
-            float labelWidth = 200f;
-            float labelHeight = fSize * 3.5f;
+            GUIContent content = new GUIContent(label);
+            float labelWidth = 240f;
+            float labelHeight = _labelStyle.CalcHeight(content, labelWidth) + 8f;
 
             Rect labelRect = new Rect(sp.x - labelWidth * 0.5f, y + half + 2f, labelWidth, labelHeight);
 
             if (ShowOutline)
             {
                 _labelStyle.normal.textColor = Color.black;
-                GUI.Label(new Rect(labelRect.x - 1f, labelRect.y, labelRect.width, labelRect.height), label, _labelStyle);
-                GUI.Label(new Rect(labelRect.x + 1f, labelRect.y, labelRect.width, labelRect.height), label, _labelStyle);
-                GUI.Label(new Rect(labelRect.x, labelRect.y - 1f, labelRect.width, labelRect.height), label, _labelStyle);
-                GUI.Label(new Rect(labelRect.x, labelRect.y + 1f, labelRect.width, labelRect.height), label, _labelStyle);
+                GUI.Label(new Rect(labelRect.x - 1f, labelRect.y, labelRect.width, labelRect.height), content, _labelStyle);
+                GUI.Label(new Rect(labelRect.x + 1f, labelRect.y, labelRect.width, labelRect.height), content, _labelStyle);
+                GUI.Label(new Rect(labelRect.x, labelRect.y - 1f, labelRect.width, labelRect.height), content, _labelStyle);
+                GUI.Label(new Rect(labelRect.x, labelRect.y + 1f, labelRect.width, labelRect.height), content, _labelStyle);
             }
 
             _labelStyle.normal.textColor = color;
-            GUI.Label(labelRect, label, _labelStyle);
+            GUI.Label(labelRect, content, _labelStyle);
         }
     }
 }
