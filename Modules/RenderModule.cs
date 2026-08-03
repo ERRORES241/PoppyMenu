@@ -25,123 +25,19 @@ namespace PoppyMenu
         internal static Color TeleporterColor = Color.yellow;
 
         private static GUIStyle _labelStyle;
-        private static float _nextScan;
-
-        private struct CachedInteractable
-        {
-            public Component Component;
-            public Transform Transform;
-            public string BaseName;
-            public string ItemContent;
-            public Color Color;
-            public bool IsPurchase;
-            public bool IsBarrel;
-            public PurchaseInteraction Purchase;
-            public BarrelInteraction Barrel;
-        }
-
-        private struct CachedPortal
-        {
-            public SceneExitController Controller;
-            public Transform Transform;
-            public string Label;
-            public Color Color;
-        }
-
-        private static readonly List<CachedInteractable> _cachedInteractables = new List<CachedInteractable>();
-        private static readonly List<CachedPortal> _cachedPortals = new List<CachedPortal>();
+        private static SceneExitController[] _portals = new SceneExitController[0];
+        private static PressurePlateController[] _plates = new PressurePlateController[0];
+        private static float _nextSceneScan;
 
         internal override void Tick()
         {
-            if (Time.realtimeSinceStartup >= _nextScan)
+            if (EspTeleporter || EspInteractables)
             {
-                _nextScan = Time.realtimeSinceStartup + 2.0f;
-                RebuildCache();
-            }
-        }
-
-        private static void RebuildCache()
-        {
-            _cachedInteractables.Clear();
-            _cachedPortals.Clear();
-
-            if (!PlayerContext.InGame) return;
-
-            if (EspInteractables)
-            {
-                var purchases = Object.FindObjectsOfType<PurchaseInteraction>();
-                foreach (PurchaseInteraction pi in purchases)
+                if (Time.realtimeSinceStartup >= _nextSceneScan)
                 {
-                    if (pi == null || !pi.available) continue;
-                    CachedInteractable item = new CachedInteractable
-                    {
-                        Component = pi,
-                        Transform = pi.transform,
-                        Purchase = pi,
-                        IsPurchase = true
-                    };
-                    GetInteractableStaticInfo(pi, out item.BaseName, out item.ItemContent, out item.Color);
-                    _cachedInteractables.Add(item);
-                }
-
-                var barrels = Object.FindObjectsOfType<BarrelInteraction>();
-                foreach (BarrelInteraction barrel in barrels)
-                {
-                    if (barrel == null || barrel.opened) continue;
-                    _cachedInteractables.Add(new CachedInteractable
-                    {
-                        Component = barrel,
-                        Transform = barrel.transform,
-                        Barrel = barrel,
-                        IsBarrel = true,
-                        BaseName = "Barrel ($0)",
-                        ItemContent = "",
-                        Color = new Color(0.85f, 0.82f, 0.55f)
-                    });
-                }
-
-                var plates = Object.FindObjectsOfType<PressurePlateController>();
-                foreach (PressurePlateController plate in plates)
-                {
-                    if (plate == null) continue;
-                    _cachedInteractables.Add(new CachedInteractable
-                    {
-                        Component = plate,
-                        Transform = plate.transform,
-                        BaseName = "Secret Button",
-                        ItemContent = "",
-                        Color = new Color(0.2f, 0.9f, 0.8f)
-                    });
-                }
-
-                var timedChests = Object.FindObjectsOfType<TimedChestController>();
-                foreach (TimedChestController timed in timedChests)
-                {
-                    if (timed == null) continue;
-                    _cachedInteractables.Add(new CachedInteractable
-                    {
-                        Component = timed,
-                        Transform = timed.transform,
-                        BaseName = "Timed Chest",
-                        ItemContent = "[Legendary]",
-                        Color = new Color(0.9f, 0.22f, 0.29f)
-                    });
-                }
-            }
-
-            if (EspTeleporter)
-            {
-                var portals = Object.FindObjectsOfType<SceneExitController>();
-                foreach (SceneExitController portal in portals)
-                {
-                    if (portal == null) continue;
-                    CachedPortal cp = new CachedPortal
-                    {
-                        Controller = portal,
-                        Transform = portal.transform
-                    };
-                    cp.Label = GetPortalStaticInfo(portal, out cp.Color);
-                    _cachedPortals.Add(cp);
+                    _nextSceneScan = Time.realtimeSinceStartup + 3.0f;
+                    _portals = Object.FindObjectsOfType<SceneExitController>();
+                    _plates = Object.FindObjectsOfType<PressurePlateController>();
                 }
             }
         }
@@ -201,22 +97,71 @@ namespace PoppyMenu
 
                 if (EspInteractables)
                 {
-                    for (int i = 0; i < _cachedInteractables.Count; i++)
+                    // 1. PurchaseInteractions (Chests, Multishops, Printers, Shrines, Lunar Pods) via InstanceTracker
+                    var purchases = InstanceTracker.GetInstancesList<PurchaseInteraction>();
+                    if (purchases != null)
                     {
-                        CachedInteractable item = _cachedInteractables[i];
-                        if (item.Component == null || item.Transform == null) continue;
-                        if (item.IsPurchase && (item.Purchase == null || !item.Purchase.available)) continue;
-                        if (item.IsBarrel && (item.Barrel == null || item.Barrel.opened)) continue;
+                        for (int i = 0; i < purchases.Count; i++)
+                        {
+                            PurchaseInteraction pi = purchases[i];
+                            if (pi == null || !pi.available || pi.transform == null) continue;
+                            if (Culled(origin, pi.transform.position, out float dist)) continue;
 
-                        if (Culled(origin, item.Transform.position, out float dist)) continue;
-
-                        string bName = ShowNames ? item.BaseName : "";
-                        string dStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
-                        string label = BuildMultiLine(bName, item.ItemContent, dStr);
-
-                        DrawMarker(cam, item.Transform.position, label, item.Color);
+                            string label = GetInteractableMultiLineLabel(pi, dist, out Color itemCol);
+                            DrawMarker(cam, pi.transform.position, label, itemCol);
+                        }
                     }
 
+                    // 2. Barrels via InstanceTracker
+                    var barrels = InstanceTracker.GetInstancesList<BarrelInteraction>();
+                    if (barrels != null)
+                    {
+                        for (int i = 0; i < barrels.Count; i++)
+                        {
+                            BarrelInteraction barrel = barrels[i];
+                            if (barrel == null || barrel.opened || barrel.transform == null) continue;
+                            if (Culled(origin, barrel.transform.position, out float dist)) continue;
+
+                            string bName = ShowNames ? "Barrel ($0)" : "";
+                            string dStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
+                            string label = BuildMultiLine(bName, "", dStr);
+                            DrawMarker(cam, barrel.transform.position, label, new Color(0.85f, 0.82f, 0.55f));
+                        }
+                    }
+
+                    // 3. ChestBehaviors (Timed Chests, etc.) via InstanceTracker
+                    var chests = InstanceTracker.GetInstancesList<ChestBehavior>();
+                    if (chests != null)
+                    {
+                        for (int i = 0; i < chests.Count; i++)
+                        {
+                            ChestBehavior chest = chests[i];
+                            if (chest == null || chest.transform == null) continue;
+                            TimedChestController timed = chest.GetComponent<TimedChestController>();
+                            if (timed == null) continue;
+                            if (Culled(origin, timed.transform.position, out float dist)) continue;
+
+                            string tName = ShowNames ? "Timed Chest" : "";
+                            string dStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
+                            string label = BuildMultiLine(tName, "[Legendary]", dStr);
+                            DrawMarker(cam, timed.transform.position, label, new Color(0.9f, 0.22f, 0.29f));
+                        }
+                    }
+
+                    // 4. Secret Pressure Plates
+                    for (int i = 0; i < _plates.Length; i++)
+                    {
+                        PressurePlateController plate = _plates[i];
+                        if (plate == null || plate.transform == null) continue;
+                        if (Culled(origin, plate.transform.position, out float dist)) continue;
+
+                        string pName = ShowNames ? "Secret Button" : "";
+                        string dStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
+                        string label = BuildMultiLine(pName, "", dStr);
+                        DrawMarker(cam, plate.transform.position, label, new Color(0.2f, 0.9f, 0.8f));
+                    }
+
+                    // 5. Pickups via InstanceTracker
                     var pickups = InstanceTracker.GetInstancesList<GenericPickupController>();
                     if (pickups != null)
                     {
@@ -244,22 +189,21 @@ namespace PoppyMenu
                         }
                     }
 
-                    for (int i = 0; i < _cachedPortals.Count; i++)
+                    for (int i = 0; i < _portals.Length; i++)
                     {
-                        CachedPortal portal = _cachedPortals[i];
-                        if (portal.Controller == null || portal.Transform == null) continue;
-                        if (Culled(origin, portal.Transform.position, out float dist)) continue;
+                        SceneExitController portal = _portals[i];
+                        if (portal == null || portal.transform == null) continue;
+                        if (Culled(origin, portal.transform.position, out float dist)) continue;
 
-                        string dStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
-                        string pLabel = BuildMultiLine(ShowNames ? portal.Label : "", "", dStr);
-                        DrawMarker(cam, portal.Transform.position, pLabel, portal.Color);
+                        string pLabel = GetPortalLabel(portal, dist, out Color portalCol);
+                        DrawMarker(cam, portal.transform.position, pLabel, portalCol);
                     }
                 }
             }
             catch { }
         }
 
-        private static string GetPortalStaticInfo(SceneExitController sec, out Color color)
+        private static string GetPortalLabel(SceneExitController sec, float dist, out Color color)
         {
             color = new Color(0.3f, 0.85f, 0.95f);
             string name = "Portal";
@@ -281,7 +225,9 @@ namespace PoppyMenu
                     else name = $"{sec.destinationScene.baseSceneName} Portal";
                 }
             }
-            return name;
+
+            string distStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
+            return BuildMultiLine(ShowNames ? name : "", "", distStr);
         }
 
         private static bool IsCommandArtifactActive()
@@ -296,12 +242,10 @@ namespace PoppyMenu
             }
         }
 
-        private static void GetInteractableStaticInfo(PurchaseInteraction pi, out string baseName, out string contentStr, out Color overrideColor)
+        private static string GetInteractableMultiLineLabel(PurchaseInteraction pi, float dist, out Color overrideColor)
         {
             overrideColor = InteractableColor;
-            baseName = "";
-            contentStr = "";
-            if (pi == null) return;
+            if (pi == null) return "";
 
             bool isCloaked = (pi.name != null && (pi.name.IndexOf("Stealthed", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.IndexOf("Cloaked", System.StringComparison.OrdinalIgnoreCase) >= 0)) || pi.displayNameToken == "CHEST1STEALTHED_NAME";
 
@@ -322,8 +266,8 @@ namespace PoppyMenu
                 costStr = " ($0)";
             }
 
-            baseName = isCloaked ? "Cloaked Chest" : pi.GetDisplayName();
-            if (string.IsNullOrEmpty(baseName)) baseName = pi.name.Replace("(Clone)", "").Trim();
+            string baseName = ShowNames ? (isCloaked ? "Cloaked Chest" : pi.GetDisplayName()) : "";
+            if (string.IsNullOrEmpty(baseName) && ShowNames) baseName = pi.name.Replace("(Clone)", "").Trim();
             if (!string.IsNullOrEmpty(baseName)) baseName += costStr;
 
             if (isCloaked)
@@ -332,6 +276,7 @@ namespace PoppyMenu
             }
 
             PickupIndex pickupIndex = PickupIndex.none;
+
             ChestBehavior chest = pi.GetComponent<ChestBehavior>();
             if (chest != null)
             {
@@ -346,6 +291,7 @@ namespace PoppyMenu
                 }
             }
 
+            string contentStr = "";
             if (pickupIndex != PickupIndex.none)
             {
                 string contentName = GetPickupContentInfo(pickupIndex, out Color itemColor);
@@ -356,6 +302,10 @@ namespace PoppyMenu
                     contentStr = $"[{contentName}]";
                 }
             }
+
+            string distStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
+
+            return BuildMultiLine(baseName, contentStr, distStr);
         }
 
         private static string GetPickupMultiLineLabel(GenericPickupController gpc, float dist, out Color overrideColor)
@@ -483,8 +433,10 @@ namespace PoppyMenu
             _labelStyle.fontSize = fSize;
 
             GUIContent content = new GUIContent(label);
-            float labelWidth = 240f;
-            float labelHeight = _labelStyle.CalcHeight(content, labelWidth) + 8f;
+            Vector2 size = _labelStyle.CalcSize(content);
+
+            float labelWidth = Mathf.Max(size.x + 24f, 400f);
+            float labelHeight = size.y + 12f;
 
             Rect labelRect = new Rect(sp.x - labelWidth * 0.5f, y + half + 2f, labelWidth, labelHeight);
 
