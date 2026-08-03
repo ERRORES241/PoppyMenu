@@ -17,7 +17,6 @@ namespace PoppyMenu
         internal static float CritMult { get => CritBonus; set => CritBonus = value; }
 
         private static Harmony _harmony;
-        private static bool _wasOn;
 
         private static bool AnyOn =>
             DamageOn || AttackSpeedOn || MoveSpeedOn || ArmorOn || CritOn || MaxHealthOn;
@@ -51,12 +50,36 @@ namespace PoppyMenu
             if (MaxHealthOn) __instance.maxHealth *= MaxHealthMult;
         }
 
+        private static float _prevDmg, _prevAtk, _prevMove, _prevArmor, _prevCrit, _prevHp;
+        private static bool _prevDmgOn, _prevAtkOn, _prevMoveOn, _prevArmorOn, _prevCritOn, _prevHpOn;
+        private static CharacterBody _prevBody;
+
         internal override void Tick()
         {
             EnsurePatched();
-            if ((AnyOn || _wasOn) && PlayerContext.HasBody)
-                PlayerContext.Body.RecalculateStats();
-            _wasOn = AnyOn;
+            if (!PlayerContext.HasBody) return;
+
+            CharacterBody body = PlayerContext.Body;
+            bool changed = body != _prevBody ||
+                _prevDmgOn != DamageOn || _prevDmg != DamageMult ||
+                _prevAtkOn != AttackSpeedOn || _prevAtk != AttackSpeedMult ||
+                _prevMoveOn != MoveSpeedOn || _prevMove != MoveSpeedMult ||
+                _prevArmorOn != ArmorOn || _prevArmor != ArmorBonus ||
+                _prevCritOn != CritOn || _prevCrit != CritBonus ||
+                _prevHpOn != MaxHealthOn || _prevHp != MaxHealthMult;
+
+            if (changed)
+            {
+                _prevBody = body;
+                _prevDmgOn = DamageOn; _prevDmg = DamageMult;
+                _prevAtkOn = AttackSpeedOn; _prevAtk = AttackSpeedMult;
+                _prevMoveOn = MoveSpeedOn; _prevMove = MoveSpeedMult;
+                _prevArmorOn = ArmorOn; _prevArmor = ArmorBonus;
+                _prevCritOn = CritOn; _prevCrit = CritBonus;
+                _prevHpOn = MaxHealthOn; _prevHp = MaxHealthMult;
+
+                body.RecalculateStats();
+            }
         }
 
         internal override void DrawMenu()

@@ -67,6 +67,7 @@ namespace PoppyMenu
 
         internal override void DrawOverlay()
         {
+            if (Event.current.type != EventType.Repaint) return;
             if (!PlayerContext.InGame) return;
             if (!EspMobs && !EspInteractables && !EspTeleporter) return;
             Camera cam = Camera.main;
@@ -229,6 +230,8 @@ namespace PoppyMenu
             overrideColor = InteractableColor;
             if (pi == null) return "";
 
+            bool isCloaked = (pi.name != null && (pi.name.IndexOf("Stealthed", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.IndexOf("Cloaked", System.StringComparison.OrdinalIgnoreCase) >= 0)) || pi.displayNameToken == "CHEST1STEALTHED_NAME";
+
             string costStr = "";
             if (pi.cost > 0)
             {
@@ -241,10 +244,19 @@ namespace PoppyMenu
                 else
                     costStr = $" (${pi.cost})";
             }
+            else if (isCloaked)
+            {
+                costStr = " ($0)";
+            }
 
-            string baseName = ShowNames ? pi.GetDisplayName() : "";
+            string baseName = ShowNames ? (isCloaked ? "Cloaked Chest" : pi.GetDisplayName()) : "";
             if (string.IsNullOrEmpty(baseName) && ShowNames) baseName = pi.name.Replace("(Clone)", "").Trim();
             if (!string.IsNullOrEmpty(baseName)) baseName += costStr;
+
+            if (isCloaked)
+            {
+                overrideColor = new Color(0.95f, 0.35f, 0.95f);
+            }
 
             PickupIndex pickupIndex = PickupIndex.none;
 
@@ -266,7 +278,7 @@ namespace PoppyMenu
             if (pickupIndex != PickupIndex.none)
             {
                 string contentName = GetPickupContentInfo(pickupIndex, out Color itemColor);
-                if (itemColor != Color.clear) overrideColor = itemColor;
+                if (itemColor != Color.clear && !isCloaked) overrideColor = itemColor;
 
                 if (!string.IsNullOrEmpty(contentName))
                 {
@@ -333,18 +345,19 @@ namespace PoppyMenu
                 case ItemTier.Tier3: return "Red (Legendary)";
                 case ItemTier.Boss: return "Yellow (Boss)";
                 case ItemTier.Lunar: return "Blue (Lunar)";
-                case ItemTier.VoidTier1: return "Void Common";
-                case ItemTier.VoidTier2: return "Void Uncommon";
-                case ItemTier.VoidTier3: return "Void Legendary";
-                case ItemTier.VoidBoss: return "Void Boss";
-                default: return tier.ToString();
+                case ItemTier.VoidTier1:
+                case ItemTier.VoidTier2:
+                case ItemTier.VoidTier3:
+                case ItemTier.VoidBoss: return "Purple (Void)";
+                default: return "Command Essence";
             }
         }
 
-        private static bool Culled(Vector3 origin, Vector3 target, out float dist)
+        private static bool Culled(Vector3 origin, Vector3 pos, out float dist)
         {
-            dist = Vector3.Distance(origin, target);
-            return MaxDistance > 0.5f && dist > MaxDistance;
+            dist = Vector3.Distance(origin, pos);
+            if (MaxDistance > 0f && dist > MaxDistance) return true;
+            return false;
         }
 
         private static string EnemyMultiLineLabel(CharacterBody body, float dist)
@@ -367,11 +380,15 @@ namespace PoppyMenu
 
         private static string BuildMultiLine(string line1, string line2, string line3)
         {
-            List<string> lines = new List<string>();
-            if (!string.IsNullOrEmpty(line1)) lines.Add(line1);
-            if (!string.IsNullOrEmpty(line2)) lines.Add(line2);
-            if (!string.IsNullOrEmpty(line3)) lines.Add(line3);
-            return string.Join("\n", lines);
+            if (string.IsNullOrEmpty(line2) && string.IsNullOrEmpty(line3)) return line1;
+            if (string.IsNullOrEmpty(line1) && string.IsNullOrEmpty(line3)) return line2;
+            if (string.IsNullOrEmpty(line1) && string.IsNullOrEmpty(line2)) return line3;
+
+            if (string.IsNullOrEmpty(line2)) return line1 + "\n" + line3;
+            if (string.IsNullOrEmpty(line3)) return line1 + "\n" + line2;
+            if (string.IsNullOrEmpty(line1)) return line2 + "\n" + line3;
+
+            return line1 + "\n" + line2 + "\n" + line3;
         }
 
         private void DrawMarker(Camera cam, Vector3 worldPos, string label, Color color)
@@ -397,24 +414,22 @@ namespace PoppyMenu
             int fSize = Mathf.Clamp(Mathf.RoundToInt(FontSize), 8, 30);
             _labelStyle.fontSize = fSize;
 
-            GUIContent content = new GUIContent(label);
-            Vector2 size = _labelStyle.CalcSize(content);
-            float labelWidth = Mathf.Max(size.x + 12f, 160f);
-            float labelHeight = size.y;
+            float labelWidth = 200f;
+            float labelHeight = fSize * 3.5f;
 
             Rect labelRect = new Rect(sp.x - labelWidth * 0.5f, y + half + 2f, labelWidth, labelHeight);
 
             if (ShowOutline)
             {
                 _labelStyle.normal.textColor = Color.black;
-                GUI.Label(new Rect(labelRect.x - 1f, labelRect.y, labelRect.width, labelRect.height), content, _labelStyle);
-                GUI.Label(new Rect(labelRect.x + 1f, labelRect.y, labelRect.width, labelRect.height), content, _labelStyle);
-                GUI.Label(new Rect(labelRect.x, labelRect.y - 1f, labelRect.width, labelRect.height), content, _labelStyle);
-                GUI.Label(new Rect(labelRect.x, labelRect.y + 1f, labelRect.width, labelRect.height), content, _labelStyle);
+                GUI.Label(new Rect(labelRect.x - 1f, labelRect.y, labelRect.width, labelRect.height), label, _labelStyle);
+                GUI.Label(new Rect(labelRect.x + 1f, labelRect.y, labelRect.width, labelRect.height), label, _labelStyle);
+                GUI.Label(new Rect(labelRect.x, labelRect.y - 1f, labelRect.width, labelRect.height), label, _labelStyle);
+                GUI.Label(new Rect(labelRect.x, labelRect.y + 1f, labelRect.width, labelRect.height), label, _labelStyle);
             }
 
             _labelStyle.normal.textColor = color;
-            GUI.Label(labelRect, content, _labelStyle);
+            GUI.Label(labelRect, label, _labelStyle);
         }
     }
 }

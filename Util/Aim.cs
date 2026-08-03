@@ -76,6 +76,22 @@ namespace PoppyMenu
             UpdateTarget();
         }
 
+        private static BodyIndex _railgunnerBodyIndex = BodyIndex.None;
+        private static bool _railgunnerIndexCached;
+
+        private static bool IsRailgunner(CharacterBody me)
+        {
+            if (me == null) return false;
+            if (!_railgunnerIndexCached)
+            {
+                _railgunnerBodyIndex = BodyCatalog.FindBodyIndex("RailgunnerBody");
+                _railgunnerIndexCached = true;
+            }
+            if (_railgunnerBodyIndex != BodyIndex.None && me.bodyIndex == _railgunnerBodyIndex)
+                return true;
+            return false;
+        }
+
         private static HurtBox GetTargetHurtBox(CharacterBody body, bool preferWeakPoint)
         {
             if (body == null) return null;
@@ -85,23 +101,12 @@ namespace PoppyMenu
             {
                 if (main != null && main.hurtBoxGroup != null && main.hurtBoxGroup.hurtBoxes != null)
                 {
-                    foreach (HurtBox hb in main.hurtBoxGroup.hurtBoxes)
+                    HurtBox[] boxes = main.hurtBoxGroup.hurtBoxes;
+                    for (int i = 0; i < boxes.Length; i++)
                     {
-                        if (hb != null && hb.gameObject.activeInHierarchy && hb.isSniperTarget)
+                        HurtBox hb = boxes[i];
+                        if (hb != null && hb.isSniperTarget && hb.gameObject.activeInHierarchy)
                             return hb;
-                    }
-                }
-
-                if (body.modelLocator != null && body.modelLocator.modelTransform != null)
-                {
-                    HurtBoxGroup hbg = body.modelLocator.modelTransform.GetComponent<HurtBoxGroup>();
-                    if (hbg != null && hbg.hurtBoxes != null)
-                    {
-                        foreach (HurtBox hb in hbg.hurtBoxes)
-                        {
-                            if (hb != null && hb.gameObject.activeInHierarchy && hb.isSniperTarget)
-                                return hb;
-                        }
                     }
                 }
 
@@ -110,12 +115,11 @@ namespace PoppyMenu
                     var list = HurtBox.readOnlySniperTargetsList;
                     if (list != null)
                     {
-                        foreach (HurtBox hb in list)
+                        for (int i = 0; i < list.Count; i++)
                         {
-                            if (hb != null && hb.gameObject.activeInHierarchy && hb.healthComponent != null && hb.healthComponent.body == body)
-                            {
+                            HurtBox hb = list[i];
+                            if (hb != null && hb.healthComponent != null && hb.healthComponent.body == body && hb.gameObject.activeInHierarchy)
                                 return hb;
-                            }
                         }
                     }
                 }
@@ -123,28 +127,17 @@ namespace PoppyMenu
 
                 if (main != null && main.hurtBoxGroup != null && main.hurtBoxGroup.hurtBoxes != null)
                 {
-                    foreach (HurtBox hb in main.hurtBoxGroup.hurtBoxes)
+                    HurtBox[] boxes = main.hurtBoxGroup.hurtBoxes;
+                    for (int i = 0; i < boxes.Length; i++)
                     {
-                        if (hb != null && hb.gameObject.activeInHierarchy && hb.damageModifier == HurtBox.DamageModifier.Weak)
+                        HurtBox hb = boxes[i];
+                        if (hb != null && hb.damageModifier == HurtBox.DamageModifier.Weak && hb.gameObject.activeInHierarchy)
                             return hb;
                     }
                 }
             }
 
             return main;
-        }
-
-        private static bool IsRailgunner(CharacterBody me)
-        {
-            if (me == null) return false;
-            BodyIndex railgunnerIndex = BodyCatalog.FindBodyIndex("RailgunnerBody");
-            if (railgunnerIndex != BodyIndex.None && me.bodyIndex == railgunnerIndex)
-                return true;
-            if (!string.IsNullOrEmpty(me.name) && me.name.IndexOf("Railgunner", System.StringComparison.OrdinalIgnoreCase) >= 0)
-                return true;
-            if (!string.IsNullOrEmpty(me.baseNameToken) && me.baseNameToken.IndexOf("RAILGUNNER", System.StringComparison.OrdinalIgnoreCase) >= 0)
-                return true;
-            return false;
         }
 
         private static void UpdateTarget()
