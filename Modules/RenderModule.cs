@@ -22,8 +22,6 @@ namespace PoppyMenu
         internal static Color TeleporterColor = Color.yellow;
 
         private static GUIStyle _labelStyle;
-        private static Color _styleColor = Color.clear;
-
         private static PurchaseInteraction[] _interactables = new PurchaseInteraction[0];
         private static float _nextScan;
 
@@ -82,11 +80,18 @@ namespace PoppyMenu
             {
                 if (EspMobs)
                 {
+                    CharacterBody me = PlayerContext.Body;
+                    TeamIndex myTeam = me != null && me.teamComponent != null ? me.teamComponent.teamIndex : TeamIndex.Player;
+
                     foreach (CharacterBody body in CharacterBody.readOnlyInstancesList)
                     {
-                        if (body == null || body == PlayerContext.Body || body.teamComponent == null) continue;
+                        if (body == null || body == me) continue;
+                        if (body.healthComponent == null || !body.healthComponent.alive) continue;
+                        if (body.teamComponent == null) continue;
+
                         TeamIndex t = body.teamComponent.teamIndex;
-                        if (t != TeamIndex.Monster && t != TeamIndex.Void) continue;
+                        if (t == myTeam || t == TeamIndex.None || t == TeamIndex.Neutral || t == TeamIndex.Player) continue;
+
                         if (Culled(origin, body.corePosition, out float dist)) continue;
                         DrawMarker(cam, body.corePosition, EnemyLabel(body, dist), EnemyColor);
                     }
@@ -96,9 +101,25 @@ namespace PoppyMenu
                 {
                     foreach (PurchaseInteraction pi in _interactables)
                     {
-                        if (pi == null) continue;
+                        if (pi == null || !pi.available) continue;
                         if (Culled(origin, pi.transform.position, out float dist)) continue;
-                        DrawMarker(cam, pi.transform.position, Label("Interactable", dist), InteractableColor);
+
+                        string name = GetInteractableLabel(pi, out Color itemCol);
+                        DrawMarker(cam, pi.transform.position, Label(name, dist), itemCol);
+                    }
+
+                    var pickups = InstanceTracker.GetInstancesList<GenericPickupController>();
+                    if (pickups != null)
+                    {
+                        foreach (GenericPickupController gpc in pickups)
+                        {
+                            if (gpc == null) continue;
+                            if (Culled(origin, gpc.transform.position, out float dist)) continue;
+
+                            string contentName = GetPickupContentInfo(gpc.pickupIndex, out Color itemCol);
+                            string name = !string.IsNullOrEmpty(contentName) ? contentName : "Pickup";
+                            DrawMarker(cam, gpc.transform.position, Label(name, dist), itemCol);
+                        }
                     }
                 }
 
@@ -106,10 +127,111 @@ namespace PoppyMenu
                 {
                     Vector3 tp = TeleporterInteraction.instance.transform.position;
                     if (!Culled(origin, tp, out float dist))
-                        DrawMarker(cam, tp, Label("Teleporter", dist), TeleporterColor);
+                    {
+                        string tpState = TeleporterInteraction.instance.isCharged ? "Teleporter (Charged)" : "Teleporter";
+                        DrawMarker(cam, tp, Label(tpState, dist), TeleporterColor);
+                    }
                 }
             }
-            catch {  }
+            catch { }
+        }
+
+        private static bool IsCommandArtifactActive()
+        {
+            try
+            {
+                return RunArtifactManager.instance != null && RunArtifactManager.instance.IsArtifactEnabled(RoR2Content.Artifacts.Command);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string GetInteractableLabel(PurchaseInteraction pi, out Color overrideColor)
+        {
+            overrideColor = InteractableColor;
+            if (pi == null) return "";
+
+            string baseName = pi.GetDisplayName();
+            if (string.IsNullOrEmpty(baseName)) baseName = pi.name.Replace("(Clone)", "").Trim();
+
+            PickupIndex pickupIndex = PickupIndex.none;
+
+            ChestBehavior chest = pi.GetComponent<ChestBehavior>();
+            if (chest != null)
+            {
+                pickupIndex = chest.dropPickup;
+            }
+            else
+            {
+                ShopTerminalBehavior terminal = pi.GetComponent<ShopTerminalBehavior>();
+                if (terminal != null)
+                {
+                    pickupIndex = terminal.CurrentPickup().pickupIndex;
+                }
+            }
+
+            if (pickupIndex != PickupIndex.none)
+            {
+                string contentName = GetPickupContentInfo(pickupIndex, out Color itemColor);
+                if (itemColor != Color.clear) overrideColor = itemColor;
+
+                if (!string.IsNullOrEmpty(contentName))
+                {
+                    return $"{baseName} [{contentName}]";
+                }
+            }
+
+            return baseName;
+        }
+
+        private static string GetPickupContentInfo(PickupIndex pickupIndex, out Color contentColor)
+        {
+            contentColor = InteractableColor;
+            if (pickupIndex == PickupIndex.none) return null;
+
+            try
+            {
+                PickupDef pickupDef = PickupCatalog.GetPickupDef(pickupIndex);
+                if (pickupDef == null) return null;
+
+                bool isCommand = IsCommandArtifactActive();
+                contentColor = pickupDef.baseColor != Color.clear ? pickupDef.baseColor : InteractableColor;
+
+                if (isCommand)
+                {
+                    return GetTierRarityName(pickupDef.itemTier);
+                }
+                else
+                {
+                    string name = Language.GetString(pickupDef.nameToken);
+                    if (string.IsNullOrEmpty(name) || name == pickupDef.nameToken)
+                        name = pickupDef.internalName;
+                    return name;
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string GetTierRarityName(ItemTier tier)
+        {
+            switch (tier)
+            {
+                case ItemTier.Tier1: return "White (Common)";
+                case ItemTier.Tier2: return "Green (Uncommon)";
+                case ItemTier.Tier3: return "Red (Legendary)";
+                case ItemTier.Boss: return "Yellow (Boss)";
+                case ItemTier.Lunar: return "Blue (Lunar)";
+                case ItemTier.VoidTier1: return "Void Common";
+                case ItemTier.VoidTier2: return "Void Uncommon";
+                case ItemTier.VoidTier3: return "Void Legendary";
+                case ItemTier.VoidBoss: return "Void Boss";
+                default: return tier.ToString();
+            }
         }
 
         private static bool Culled(Vector3 origin, Vector3 target, out float dist)
@@ -146,9 +268,10 @@ namespace PoppyMenu
             Theme.Fill(new Rect(sp.x - half, y - half, MarkerSize, MarkerSize), color);
 
             if (string.IsNullOrEmpty(label)) return;
-            if (_labelStyle == null) _labelStyle = new GUIStyle(GUI.skin.label);
-            if (_styleColor != color) { _labelStyle.normal.textColor = color; _styleColor = color; }
-            GUI.Label(new Rect(sp.x + half + 3f, y - 8f, 260f, 20f), label, _labelStyle);
+            if (_labelStyle == null) _labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 11, fontStyle = FontStyle.Bold };
+
+            _labelStyle.normal.textColor = color;
+            GUI.Label(new Rect(sp.x + half + 3f, y - 8f, 280f, 20f), label, _labelStyle);
         }
     }
 }
