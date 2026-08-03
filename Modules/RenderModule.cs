@@ -157,8 +157,22 @@ namespace PoppyMenu
             overrideColor = InteractableColor;
             if (pi == null) return "";
 
+            string costStr = "";
+            if (pi.cost > 0)
+            {
+                if (pi.costType == CostTypeIndex.Money)
+                    costStr = $" (${pi.cost})";
+                else if (pi.costType == CostTypeIndex.LunarCoin)
+                    costStr = $" ({pi.cost} Lunar)";
+                else if (pi.costType == CostTypeIndex.PercentHealth)
+                    costStr = $" ({pi.cost}% HP)";
+                else
+                    costStr = $" (${pi.cost})";
+            }
+
             string baseName = ShowNames ? pi.GetDisplayName() : "";
             if (string.IsNullOrEmpty(baseName) && ShowNames) baseName = pi.name.Replace("(Clone)", "").Trim();
+            if (!string.IsNullOrEmpty(baseName)) baseName += costStr;
 
             PickupIndex pickupIndex = PickupIndex.none;
 
