@@ -26,6 +26,7 @@ namespace PoppyMenu
 
         private static GUIStyle _labelStyle;
         private static PressurePlateController[] _plates = new PressurePlateController[0];
+        private static AccessCodesNodeController[] _accessNodes = new AccessCodesNodeController[0];
         private static SceneDef _lastStageScene;
 
         internal override void Tick()
@@ -49,6 +50,7 @@ namespace PoppyMenu
             try
             {
                 _plates = Object.FindObjectsOfType<PressurePlateController>();
+                _accessNodes = Object.FindObjectsOfType<AccessCodesNodeController>();
             }
             catch { }
         }
@@ -172,7 +174,27 @@ namespace PoppyMenu
                         DrawMarker(cam, plate.transform.position, label, new Color(0.2f, 0.9f, 0.8f));
                     }
 
-                    // 5. Pickups via InstanceTracker
+                    // 5. Access Codes Nodes (DLC2 Primeval Portal Nodes)
+                    for (int i = 0; i < _accessNodes.Length; i++)
+                    {
+                        AccessCodesNodeController node = _accessNodes[i];
+                        if (node == null || node.transform == null) continue;
+
+                        PurchaseInteraction pi = node.GetComponent<PurchaseInteraction>();
+                        if (pi != null && !pi.available) continue;
+
+                        GenericInteraction gi = node.GetComponent<GenericInteraction>();
+                        if (gi != null && gi.interactability == Interactability.Disabled) continue;
+
+                        if (Culled(origin, node.transform.position, out float dist)) continue;
+
+                        string nName = ShowNames ? "Access Code Node" : "";
+                        string dStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
+                        string label = BuildMultiLine(nName, "[Primeval Portal]", dStr);
+                        DrawMarker(cam, node.transform.position, label, new Color(0.3f, 0.95f, 0.4f));
+                    }
+
+                    // 6. Pickups via InstanceTracker
                     var pickups = InstanceTracker.GetInstancesList<GenericPickupController>();
                     if (pickups != null)
                     {
@@ -222,6 +244,9 @@ namespace PoppyMenu
             if (pi == null) return "";
 
             bool isCloaked = (pi.name != null && (pi.name.IndexOf("Stealthed", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.IndexOf("Cloaked", System.StringComparison.OrdinalIgnoreCase) >= 0)) || pi.displayNameToken == "CHEST1STEALTHED_NAME";
+            bool isAccessNode = (pi.name != null && (pi.name.IndexOf("Access", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.IndexOf("Node", System.StringComparison.OrdinalIgnoreCase) >= 0))
+                || (pi.displayNameToken != null && pi.displayNameToken.IndexOf("ACCESS", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                || pi.GetComponent<AccessCodesNodeController>() != null;
 
             string costStr = "";
             if (pi.cost > 0)
@@ -240,13 +265,17 @@ namespace PoppyMenu
                 costStr = " ($0)";
             }
 
-            string baseName = ShowNames ? (isCloaked ? "Cloaked Chest" : pi.GetDisplayName()) : "";
+            string baseName = ShowNames ? (isCloaked ? "Cloaked Chest" : (isAccessNode ? "Access Code Node" : pi.GetDisplayName())) : "";
             if (string.IsNullOrEmpty(baseName) && ShowNames) baseName = pi.name.Replace("(Clone)", "").Trim();
             if (!string.IsNullOrEmpty(baseName)) baseName += costStr;
 
             if (isCloaked)
             {
                 overrideColor = new Color(0.95f, 0.35f, 0.95f);
+            }
+            else if (isAccessNode)
+            {
+                overrideColor = new Color(0.3f, 0.95f, 0.4f);
             }
 
             PickupIndex pickupIndex = PickupIndex.none;
