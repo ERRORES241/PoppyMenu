@@ -265,8 +265,13 @@ namespace PoppyMenu
                 (pi.name != null && (pi.name.IndexOf("DroneVendor", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.IndexOf("TripleDrone", System.StringComparison.OrdinalIgnoreCase) >= 0)) ||
                 (pi.displayNameToken != null && (pi.displayNameToken.IndexOf("DRONEVENDOR", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.displayNameToken.IndexOf("TRIPLEDRONE", System.StringComparison.OrdinalIgnoreCase) >= 0));
 
-            bool isCollectiveCombat = pi.GetComponent<ShrineColossusAccessBehavior>() != null ||
-                (pi.name != null && pi.name.IndexOf("ShrineColossus", System.StringComparison.OrdinalIgnoreCase) >= 0);
+            bool isShrineRebirth = pi.GetComponent<ShrineColossusAccessBehavior>() != null ||
+                (pi.name != null && (pi.name.IndexOf("ShrineRebirth", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.IndexOf("ShrineColossus", System.StringComparison.OrdinalIgnoreCase) >= 0));
+
+            bool isHalcyonShrine = pi.GetComponent<HalcyoniteShrineInteractable>() != null ||
+                (pi.name != null && pi.name.IndexOf("Halcyonite", System.StringComparison.OrdinalIgnoreCase) >= 0);
+
+            bool isCollectiveCombat = (pi.name != null && (pi.name.IndexOf("CombatCollective", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.IndexOf("CollectiveCombat", System.StringComparison.OrdinalIgnoreCase) >= 0));
 
             bool isWanderingChef = pi.GetComponent<ChefFoodPickController>() != null ||
                 (pi.name != null && (pi.name.IndexOf("ChefWok", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.IndexOf("WanderingChef", System.StringComparison.OrdinalIgnoreCase) >= 0)) ||
@@ -298,6 +303,8 @@ namespace PoppyMenu
             else if (isDroneScrapper) { specialName = "Drone Scrapper"; specialSubtext = "[Scrap Drones]"; }
             else if (isDroneCombiner) { specialName = "Drone Combiner"; specialSubtext = "[Combine Drones]"; }
             else if (isTripleDroneShop) { specialName = "Triple Drone Shop"; specialSubtext = "[Drone Shop]"; }
+            else if (isShrineRebirth) { specialName = "Shrine of Rebirth"; specialSubtext = "[Revive Teammates]"; }
+            else if (isHalcyonShrine) { specialName = "Halcyon Shrine"; specialSubtext = "[Shrine of Shape]"; }
             else if (isCollectiveCombat) { specialName = "Collective Shrine of Combat"; specialSubtext = "[Combat Shrine]"; }
             else if (isWanderingChef) { specialName = "Wandering CHEF"; specialSubtext = "[Cook Items]"; }
 
@@ -309,7 +316,7 @@ namespace PoppyMenu
             else if (isAccessNode) overrideColor = new Color(0.3f, 0.95f, 0.4f);
             else if (isDistributor) overrideColor = new Color(0.95f, 0.75f, 0.2f);
             else if (isDroneScrapper || isDroneCombiner || isTripleDroneShop) overrideColor = new Color(0.4f, 0.85f, 0.95f);
-            else if (isCollectiveCombat) overrideColor = new Color(0.95f, 0.35f, 0.2f);
+            else if (isShrineRebirth || isHalcyonShrine || isCollectiveCombat) overrideColor = new Color(0.95f, 0.35f, 0.2f);
             else if (isWanderingChef) overrideColor = new Color(0.95f, 0.55f, 0.2f);
 
             PickupIndex pickupIndex = PickupIndex.none;

@@ -55,6 +55,14 @@ namespace PoppyMenu
             Widgets.Hint("Spawns where you aim, or just ahead of you.");
             Widgets.SectionEnd();
 
+            Widgets.SectionBegin("Special Spawns");
+            Widgets.Button("Spawn Access Node (DLC2)", () =>
+            {
+                Vector3 pos = ComputePos();
+                NetUtil.Do(PoppyOp.SpawnAccessNode, f1: pos.x, f2: pos.y, f3: pos.z);
+            });
+            Widgets.SectionEnd();
+
             Widgets.SectionBegin("Combat");
             Widgets.DangerButton("Kill All Enemies", () => NetUtil.Do(PoppyOp.KillAllEnemies));
             Widgets.SectionEnd();
