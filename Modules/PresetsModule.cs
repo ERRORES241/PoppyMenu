@@ -239,6 +239,7 @@ namespace PoppyMenu
         public float StatCritBonus { get; set; }
         public bool StatHpOn { get; set; }
         public float StatHpMult { get; set; }
+        public bool GuaranteedShrineChance { get; set; }
 
         public static ConfigProfile CaptureCurrent(string name)
         {
@@ -290,7 +291,8 @@ namespace PoppyMenu
                 StatCritOn = StatsModule.CritOn,
                 StatCritBonus = StatsModule.CritBonus,
                 StatHpOn = StatsModule.MaxHealthOn,
-                StatHpMult = StatsModule.MaxHealthMult
+                StatHpMult = StatsModule.MaxHealthMult,
+                GuaranteedShrineChance = WorldModule.GuaranteedShrineChance
             };
         }
 
@@ -343,6 +345,7 @@ namespace PoppyMenu
             StatsModule.CritBonus = StatCritBonus;
             StatsModule.MaxHealthOn = StatHpOn;
             StatsModule.MaxHealthMult = StatHpMult;
+            WorldModule.GuaranteedShrineChance = GuaranteedShrineChance;
 
             ModConfig.Save();
         }

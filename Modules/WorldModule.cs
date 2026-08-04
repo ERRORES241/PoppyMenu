@@ -1,3 +1,4 @@
+using HarmonyLib;
 using RoR2;
 using UnityEngine;
 
@@ -10,9 +11,37 @@ namespace PoppyMenu
         internal static bool FreezeMatch;
         internal static bool FreezeTimer;
         internal static float TimeScale = 1f;
+        internal static bool GuaranteedShrineChance;
 
         private static bool _controllingTime;
         private static bool _timerFrozen;
+        private static Harmony _harmony;
+
+        internal static void Init()
+        {
+            try
+            {
+                _harmony = new Harmony("poppy.world");
+                var addStack = AccessTools.Method(typeof(ShrineChanceBehavior), nameof(ShrineChanceBehavior.AddShrineStack));
+                if (addStack != null)
+                {
+                    _harmony.Patch(addStack, prefix: new HarmonyMethod(typeof(WorldModule), nameof(AddShrineStack_Prefix)));
+                }
+            }
+            catch (System.Exception e)
+            {
+                Log.Error("WorldModule Harmony patch failed: " + e);
+            }
+        }
+
+        private static void AddShrineStack_Prefix(ShrineChanceBehavior __instance)
+        {
+            if (__instance != null && GuaranteedShrineChance)
+            {
+                __instance.failureChance = -1f;
+                __instance.failureWeight = 0f;
+            }
+        }
 
         internal override void Tick()
         {
@@ -75,6 +104,11 @@ namespace PoppyMenu
             Widgets.Button("Normal (1x)", () => TimeScale = 1f);
             Widgets.Button("Fast (2x)", () => TimeScale = 2f);
             GUILayout.EndHorizontal();
+            Widgets.SectionEnd();
+
+            Widgets.SectionBegin("Shrines");
+            GuaranteedShrineChance = Widgets.Toggle("100% Shrine of Chance Win Rate", GuaranteedShrineChance);
+            Widgets.Hint("Guarantees an item drop on every offer at Shrine of Chance (no fails). Host or solo.");
             Widgets.SectionEnd();
 
             Widgets.SectionBegin("Safety");

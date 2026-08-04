@@ -13,7 +13,7 @@ namespace PoppyMenu
             ItemsModule.NoEquipmentCooldown = false;
             RenderModule.EspMobs = RenderModule.EspInteractables = RenderModule.EspTeleporter = false;
             StatsModule.DisableAll();
-            WorldModule.FreezeMatch = false; WorldModule.FreezeTimer = false; WorldModule.TimeScale = 1f;
+            WorldModule.FreezeMatch = false; WorldModule.FreezeTimer = false; WorldModule.GuaranteedShrineChance = false; WorldModule.TimeScale = 1f;
             Notify.Push("All features disabled");
         }
     }

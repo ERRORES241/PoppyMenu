@@ -21,6 +21,7 @@ namespace PoppyMenu
             InputCapture.Init();
             Aim.Init();
             Safety.Init();
+            WorldModule.Init();
             ConsoleCommands.Init();
             BindStore.Load();
             MacroStore.Load();

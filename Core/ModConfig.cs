@@ -81,6 +81,7 @@ namespace PoppyMenu
         internal static ConfigEntry<bool> StatCritOn;
         internal static ConfigEntry<float> StatCritBonus;
         internal static ConfigEntry<bool> StatHpOn;
+        internal static ConfigEntry<bool> GuaranteedShrineChance;
         internal static ConfigEntry<float> StatHpMult;
 
         internal static void Init(ConfigFile cfg)
@@ -169,6 +170,7 @@ namespace PoppyMenu
             StatCritBonus = cfg.Bind("Stats", "CritBonus", 100f, "Crit chance bonus (+%).");
             StatHpOn = cfg.Bind("Stats", "MaxHealthOn", false, "Max health multiplier toggle.");
             StatHpMult = cfg.Bind("Stats", "MaxHealthMult", 1f, "Max health multiplier.");
+            GuaranteedShrineChance = cfg.Bind("World", "GuaranteedShrineChance", false, "100% success rate on Shrine of Chance.");
 
             LoadFromConfig();
         }
@@ -225,6 +227,7 @@ namespace PoppyMenu
             StatsModule.CritBonus = StatCritBonus.Value;
             StatsModule.MaxHealthOn = StatHpOn.Value;
             StatsModule.MaxHealthMult = StatHpMult.Value;
+            WorldModule.GuaranteedShrineChance = GuaranteedShrineChance.Value;
         }
 
         internal static void Save()
@@ -286,6 +289,7 @@ namespace PoppyMenu
             StatCritBonus.Value = StatsModule.CritBonus;
             StatHpOn.Value = StatsModule.MaxHealthOn;
             StatHpMult.Value = StatsModule.MaxHealthMult;
+            GuaranteedShrineChance.Value = WorldModule.GuaranteedShrineChance;
 
             _cfg.Save();
         }
