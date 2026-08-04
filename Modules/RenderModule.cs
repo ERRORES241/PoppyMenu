@@ -26,7 +26,6 @@ namespace PoppyMenu
 
         private static GUIStyle _labelStyle;
         private static PressurePlateController[] _plates = new PressurePlateController[0];
-        private static AccessCodesNodeController[] _accessNodes = new AccessCodesNodeController[0];
         private static SceneDef _lastStageScene;
 
         internal override void Tick()
@@ -50,7 +49,6 @@ namespace PoppyMenu
             try
             {
                 _plates = Object.FindObjectsOfType<PressurePlateController>();
-                _accessNodes = Object.FindObjectsOfType<AccessCodesNodeController>();
             }
             catch { }
         }
@@ -174,27 +172,7 @@ namespace PoppyMenu
                         DrawMarker(cam, plate.transform.position, label, new Color(0.2f, 0.9f, 0.8f));
                     }
 
-                    // 5. Access Codes Nodes (DLC2 Primeval Portal Nodes)
-                    for (int i = 0; i < _accessNodes.Length; i++)
-                    {
-                        AccessCodesNodeController node = _accessNodes[i];
-                        if (node == null || node.transform == null) continue;
-
-                        PurchaseInteraction pi = node.GetComponent<PurchaseInteraction>();
-                        if (pi != null && !pi.available) continue;
-
-                        GenericInteraction gi = node.GetComponent<GenericInteraction>();
-                        if (gi != null && gi.interactability == Interactability.Disabled) continue;
-
-                        if (Culled(origin, node.transform.position, out float dist)) continue;
-
-                        string nName = ShowNames ? "Access Code Node" : "";
-                        string dStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
-                        string label = BuildMultiLine(nName, "[Primeval Portal]", dStr);
-                        DrawMarker(cam, node.transform.position, label, new Color(0.3f, 0.95f, 0.4f));
-                    }
-
-                    // 6. Pickups via InstanceTracker
+                    // 5. Pickups via InstanceTracker
                     var pickups = InstanceTracker.GetInstancesList<GenericPickupController>();
                     if (pickups != null)
                     {
@@ -244,38 +222,6 @@ namespace PoppyMenu
             if (pi == null) return "";
 
             bool isCloaked = (pi.name != null && (pi.name.IndexOf("Stealthed", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.IndexOf("Cloaked", System.StringComparison.OrdinalIgnoreCase) >= 0)) || pi.displayNameToken == "CHEST1STEALTHED_NAME";
-            
-            bool isAccessNode = pi.GetComponent<AccessCodesNodeController>() != null ||
-                (pi.name != null && (pi.name.IndexOf("AccessCodes", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.IndexOf("AccessNode", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.Equals("Access Codes Node", System.StringComparison.OrdinalIgnoreCase))) ||
-                (pi.displayNameToken != null && (pi.displayNameToken.IndexOf("ACCESS_NODE", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.displayNameToken.IndexOf("ACCESSCODES", System.StringComparison.OrdinalIgnoreCase) >= 0));
-
-            bool isDistributor = pi.GetComponent<PickupDistributorBehavior>() != null ||
-                (pi.name != null && pi.name.IndexOf("Distributor", System.StringComparison.OrdinalIgnoreCase) >= 0) ||
-                (pi.displayNameToken != null && pi.displayNameToken.IndexOf("DISTRIBUTOR", System.StringComparison.OrdinalIgnoreCase) >= 0);
-
-            bool isDroneScrapper = pi.GetComponent<DroneScrapperController>() != null || pi.GetComponent<DroneScrapperPickerController>() != null ||
-                (pi.name != null && pi.name.IndexOf("DroneScrapper", System.StringComparison.OrdinalIgnoreCase) >= 0) ||
-                (pi.displayNameToken != null && pi.displayNameToken.IndexOf("DRONESCRAPPER", System.StringComparison.OrdinalIgnoreCase) >= 0);
-
-            bool isDroneCombiner = pi.GetComponent<DroneCombinerController>() != null ||
-                (pi.name != null && (pi.name.IndexOf("DroneCombiner", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.IndexOf("DroneAssembly", System.StringComparison.OrdinalIgnoreCase) >= 0)) ||
-                (pi.displayNameToken != null && pi.displayNameToken.IndexOf("DRONECOMBINER", System.StringComparison.OrdinalIgnoreCase) >= 0);
-
-            bool isTripleDroneShop = pi.GetComponent<DroneVendorMultiShopController>() != null || pi.GetComponent<DroneVendorTerminalBehavior>() != null ||
-                (pi.name != null && (pi.name.IndexOf("DroneVendor", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.IndexOf("TripleDrone", System.StringComparison.OrdinalIgnoreCase) >= 0)) ||
-                (pi.displayNameToken != null && (pi.displayNameToken.IndexOf("DRONEVENDOR", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.displayNameToken.IndexOf("TRIPLEDRONE", System.StringComparison.OrdinalIgnoreCase) >= 0));
-
-            bool isShrineRebirth = pi.GetComponent<ShrineColossusAccessBehavior>() != null ||
-                (pi.name != null && (pi.name.IndexOf("ShrineRebirth", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.IndexOf("ShrineColossus", System.StringComparison.OrdinalIgnoreCase) >= 0));
-
-            bool isHalcyonShrine = pi.GetComponent<HalcyoniteShrineInteractable>() != null ||
-                (pi.name != null && pi.name.IndexOf("Halcyonite", System.StringComparison.OrdinalIgnoreCase) >= 0);
-
-            bool isCollectiveCombat = (pi.name != null && (pi.name.IndexOf("CombatCollective", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.IndexOf("CollectiveCombat", System.StringComparison.OrdinalIgnoreCase) >= 0));
-
-            bool isWanderingChef = pi.GetComponent<ChefFoodPickController>() != null ||
-                (pi.name != null && (pi.name.IndexOf("ChefWok", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.IndexOf("WanderingChef", System.StringComparison.OrdinalIgnoreCase) >= 0)) ||
-                (pi.displayNameToken != null && pi.displayNameToken.IndexOf("WANDERINGCHEF", System.StringComparison.OrdinalIgnoreCase) >= 0);
 
             string costStr = "";
             if (pi.cost > 0)
@@ -294,30 +240,14 @@ namespace PoppyMenu
                 costStr = " ($0)";
             }
 
-            string specialName = null;
-            string specialSubtext = null;
-
-            if (isCloaked) specialName = "Cloaked Chest";
-            else if (isAccessNode) { specialName = "Access Node"; specialSubtext = "[Secret Portal]"; }
-            else if (isDistributor) { specialName = "Item Distributor"; specialSubtext = "[Temp Items]"; }
-            else if (isDroneScrapper) { specialName = "Drone Scrapper"; specialSubtext = "[Scrap Drones]"; }
-            else if (isDroneCombiner) { specialName = "Drone Combiner"; specialSubtext = "[Combine Drones]"; }
-            else if (isTripleDroneShop) { specialName = "Triple Drone Shop"; specialSubtext = "[Drone Shop]"; }
-            else if (isShrineRebirth) { specialName = "Shrine of Rebirth"; specialSubtext = "[Revive Teammates]"; }
-            else if (isHalcyonShrine) { specialName = "Halcyon Shrine"; specialSubtext = "[Shrine of Shape]"; }
-            else if (isCollectiveCombat) { specialName = "Collective Shrine of Combat"; specialSubtext = "[Combat Shrine]"; }
-            else if (isWanderingChef) { specialName = "Wandering CHEF"; specialSubtext = "[Cook Items]"; }
-
-            string baseName = ShowNames ? (specialName ?? pi.GetDisplayName()) : "";
+            string baseName = ShowNames ? (isCloaked ? "Cloaked Chest" : pi.GetDisplayName()) : "";
             if (string.IsNullOrEmpty(baseName) && ShowNames) baseName = pi.name.Replace("(Clone)", "").Trim();
             if (!string.IsNullOrEmpty(baseName)) baseName += costStr;
 
-            if (isCloaked) overrideColor = new Color(0.95f, 0.35f, 0.95f);
-            else if (isAccessNode) overrideColor = new Color(0.3f, 0.95f, 0.4f);
-            else if (isDistributor) overrideColor = new Color(0.95f, 0.75f, 0.2f);
-            else if (isDroneScrapper || isDroneCombiner || isTripleDroneShop) overrideColor = new Color(0.4f, 0.85f, 0.95f);
-            else if (isShrineRebirth || isHalcyonShrine || isCollectiveCombat) overrideColor = new Color(0.95f, 0.35f, 0.2f);
-            else if (isWanderingChef) overrideColor = new Color(0.95f, 0.55f, 0.2f);
+            if (isCloaked)
+            {
+                overrideColor = new Color(0.95f, 0.35f, 0.95f);
+            }
 
             PickupIndex pickupIndex = PickupIndex.none;
 
@@ -345,11 +275,6 @@ namespace PoppyMenu
                 {
                     contentStr = $"[{contentName}]";
                 }
-            }
-
-            if (string.IsNullOrEmpty(contentStr) && !string.IsNullOrEmpty(specialSubtext))
-            {
-                contentStr = specialSubtext;
             }
 
             string distStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";

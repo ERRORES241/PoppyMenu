@@ -19,7 +19,7 @@ namespace PoppyMenu
         SetStagesCleared, SetRunTime, SetTeamLevel, SetArtifact,
         TrueKillTarget, TeleportBody, SetTeam, HurtBody,
         HealAmount, GiveTimedBuff, InflictDot,
-        ChangeScene, UndoInventory, SpawnAccessNode
+        ChangeScene, UndoInventory
     }
 
     internal static class NetUtil
@@ -94,7 +94,6 @@ namespace PoppyMenu
                 case PoppyOp.InflictDot: return "DoT applied";
                 case PoppyOp.ChangeScene: return "Changing scene";
                 case PoppyOp.UndoInventory: return "Inventory restored";
-                case PoppyOp.SpawnAccessNode: return "Access Node spawned";
                 default: return op.ToString();
             }
         }
@@ -293,9 +292,6 @@ namespace PoppyMenu
                         break;
                     case PoppyOp.SpawnMSPortal:
                         TeleporterInteraction.instance?.AttemptToSpawnMSPortal();
-                        break;
-                    case PoppyOp.SpawnAccessNode:
-                        SpawnAccessNode(new Vector3(f1, f2, f3));
                         break;
                     case PoppyOp.SetStagesCleared:
                         if (Run.instance != null) Run.instance.stageClearCount = Mathf.Max(0, i1);
@@ -546,57 +542,6 @@ namespace PoppyMenu
             TeleporterInteraction tp = TeleporterInteraction.instance;
             if (tp != null && tp.holdoutZoneController != null)
                 tp.holdoutZoneController.FullyChargeHoldoutZone();
-        }
-
-        private static void SpawnAccessNode(Vector3 position)
-        {
-            if (!NetworkServer.active) return;
-
-            InteractableSpawnCard accessCard = null;
-            foreach (var card in Resources.FindObjectsOfTypeAll<InteractableSpawnCard>())
-            {
-                if (card != null && card.name != null && (card.name.IndexOf("AccessNode", System.StringComparison.OrdinalIgnoreCase) >= 0 || card.name.IndexOf("AccessCodes", System.StringComparison.OrdinalIgnoreCase) >= 0))
-                {
-                    accessCard = card;
-                    break;
-                }
-            }
-
-            if (accessCard != null && DirectorCore.instance != null && Run.instance != null)
-            {
-                var placement = new DirectorPlacementRule
-                {
-                    placementMode = DirectorPlacementRule.PlacementMode.Approximate,
-                    position = position,
-                    minDistance = 0f,
-                    maxDistance = 10f
-                };
-                DirectorCore.instance.TrySpawnObject(new DirectorSpawnRequest(accessCard, placement, Run.instance.spawnRng));
-                return;
-            }
-
-            GameObject prefab = LegacyResourcesAPI.Load<GameObject>("Prefabs/NetworkedObjects/AccessCodesNode");
-            if (prefab == null)
-            {
-                foreach (var controller in Resources.FindObjectsOfTypeAll<AccessCodesNodeController>())
-                {
-                    if (controller != null && controller.gameObject != null)
-                    {
-                        prefab = controller.gameObject;
-                        break;
-                    }
-                }
-            }
-
-            if (prefab != null)
-            {
-                GameObject spawned = Object.Instantiate(prefab, position, Quaternion.identity);
-                NetworkServer.Spawn(spawned);
-            }
-            else
-            {
-                Log.Warning("SpawnAccessNode: Could not find Access Node prefab or spawn card.");
-            }
         }
 
         private static void SkipStage()
