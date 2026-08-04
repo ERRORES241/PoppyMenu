@@ -96,6 +96,23 @@ namespace PoppyMenu
         {
             if (body == null) return null;
             HurtBox main = Util.FindBodyMainHurtBox(body);
+            if (main == null && body.mainHurtBox != null) main = body.mainHurtBox;
+            if (main == null && body.modelLocator != null && body.modelLocator.modelTransform != null)
+            {
+                var group = body.modelLocator.modelTransform.GetComponent<HurtBoxGroup>();
+                if (group != null && group.mainHurtBox != null) main = group.mainHurtBox;
+                else if (group != null && group.hurtBoxes != null && group.hurtBoxes.Length > 0)
+                {
+                    for (int i = 0; i < group.hurtBoxes.Length; i++)
+                    {
+                        if (group.hurtBoxes[i] != null && group.hurtBoxes[i].gameObject.activeInHierarchy)
+                        {
+                            main = group.hurtBoxes[i];
+                            break;
+                        }
+                    }
+                }
+            }
 
             if (preferWeakPoint)
             {
@@ -143,51 +160,102 @@ namespace PoppyMenu
         private static void UpdateTarget()
         {
             CharacterBody me = PlayerContext.Body;
-            if (me == null || me.teamComponent == null) { Target = null; return; }
+            if (me == null) { Target = null; return; }
 
             Ray aim = PlayerContext.AimRay();
-            if (Sticky && IsValidTarget(aim)) return;
+            Camera cam = Camera.main;
+
+            if (Sticky && IsValidTarget(aim, cam)) return;
 
             Target = null;
-            TeamIndex myTeam = me.teamComponent.teamIndex;
+            TeamIndex myTeam = me.teamComponent != null ? me.teamComponent.teamIndex : TeamIndex.Player;
             float rangeSqr = MaxRange * MaxRange;
             float bestScore = float.MaxValue;
             bool bestIsBoss = false;
 
             bool preferWeakPoint = TargetWeakPoints && IsRailgunner(me);
+            Vector2 screenCenter = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
 
-            foreach (CharacterBody body in CharacterBody.readOnlyInstancesList)
+            float fovRadiusPixels = float.MaxValue;
+            if (UseFov && cam != null)
             {
+                float halfFovRad = Mathf.Clamp(Fov * 0.5f, 0.5f, 89.9f) * Mathf.Deg2Rad;
+                float camHalfFovRad = Mathf.Clamp(cam.fieldOfView * 0.5f, 0.5f, 89.9f) * Mathf.Deg2Rad;
+                fovRadiusPixels = Screen.height * 0.5f * (Mathf.Tan(halfFovRad) / Mathf.Tan(camHalfFovRad));
+            }
+
+            var bodies = CharacterBody.readOnlyInstancesList;
+            if (bodies == null) return;
+
+            for (int i = 0; i < bodies.Count; i++)
+            {
+                CharacterBody body = bodies[i];
                 if (!IsHostile(me, myTeam, body)) continue;
+
                 HurtBox hb = GetTargetHurtBox(body, preferWeakPoint);
                 if (hb == null) continue;
 
-                Vector3 to = hb.transform.position - aim.origin;
-                if (to.sqrMagnitude > rangeSqr) continue;
+                Vector3 targetPos = hb.transform.position;
+                Vector3 to = targetPos - aim.origin;
+                float distSqr = to.sqrMagnitude;
+                if (distSqr > rangeSqr) continue;
+
+                float dist2D = 0f;
                 float angle = Vector3.Angle(aim.direction, to);
-                if (UseFov && angle > Fov) continue;
-                if (RequireLoS && Physics.Linecast(aim.origin, hb.transform.position, LayerIndex.world.mask)) continue;
+
+                if (cam != null)
+                {
+                    Vector3 sp = cam.WorldToScreenPoint(targetPos);
+                    if (sp.z <= 0f) continue;
+
+                    dist2D = Vector2.Distance(screenCenter, new Vector2(sp.x, sp.y));
+                    if (UseFov && dist2D > fovRadiusPixels) continue;
+                }
+                else if (UseFov && angle > Fov * 0.5f)
+                {
+                    continue;
+                }
+
+                if (RequireLoS)
+                {
+                    float dist = Mathf.Sqrt(distSqr);
+                    if (dist > 0.1f && Physics.Raycast(aim.origin, to / dist, out RaycastHit hit, dist - 0.2f, LayerIndex.world.mask, QueryTriggerInteraction.Ignore))
+                    {
+                        continue;
+                    }
+                }
 
                 bool boss = body.isBoss;
                 if (PrioritizeBosses)
                 {
                     if (bestIsBoss && !boss) continue;
-                    if (boss && !bestIsBoss) { Target = hb; bestScore = Score(body, angle, to.magnitude); bestIsBoss = true; continue; }
+                    if (boss && !bestIsBoss)
+                    {
+                        Target = hb;
+                        bestScore = Score(body, angle, dist2D, Mathf.Sqrt(distSqr));
+                        bestIsBoss = true;
+                        continue;
+                    }
                 }
 
-                float score = Score(body, angle, to.magnitude);
-                if (score < bestScore) { bestScore = score; bestIsBoss = boss; Target = hb; }
+                float score = Score(body, angle, dist2D, Mathf.Sqrt(distSqr));
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    bestIsBoss = boss;
+                    Target = hb;
+                }
             }
         }
 
-        private static float Score(CharacterBody b, float angle, float dist)
+        private static float Score(CharacterBody b, float angle, float dist2D, float dist3D)
         {
             switch (Sorting)
             {
-                case 1: return dist;
+                case 1: return dist3D;
                 case 2: return b.healthComponent != null ? b.healthComponent.health : float.MaxValue;
                 case 3: return b.healthComponent != null ? -b.healthComponent.health : float.MaxValue;
-                default: return angle;
+                default: return dist2D > 0f ? dist2D : angle;
             }
         }
 
@@ -195,17 +263,42 @@ namespace PoppyMenu
         {
             if (body == null || body == me) return false;
             if (body.healthComponent == null || !body.healthComponent.alive) return false;
-            if (body.teamComponent == null) return false;
-            TeamIndex t = body.teamComponent.teamIndex;
-            return t != myTeam && t != TeamIndex.None && t != TeamIndex.Neutral && t != TeamIndex.Player;
+
+            TeamIndex t = body.teamComponent != null ? body.teamComponent.teamIndex : TeamIndex.Monster;
+            if (t == myTeam) return false;
+            if (t == TeamIndex.Player && myTeam == TeamIndex.Player) return false;
+
+            return true;
         }
 
-        private static bool IsValidTarget(Ray aim)
+        private static bool IsValidTarget(Ray aim, Camera cam)
         {
             if (Target == null || Target.healthComponent == null || !Target.healthComponent.alive) return false;
-            Vector3 to = Target.transform.position - aim.origin;
+            Vector3 targetPos = Target.transform.position;
+            Vector3 to = targetPos - aim.origin;
             if (to.sqrMagnitude > MaxRange * MaxRange) return false;
-            if (UseFov && Vector3.Angle(aim.direction, to) > Fov) return false;
+
+            if (UseFov)
+            {
+                if (cam != null)
+                {
+                    Vector3 sp = cam.WorldToScreenPoint(targetPos);
+                    if (sp.z <= 0f) return false;
+
+                    float halfFovRad = Mathf.Clamp(Fov * 0.5f, 0.5f, 89.9f) * Mathf.Deg2Rad;
+                    float camHalfFovRad = Mathf.Clamp(cam.fieldOfView * 0.5f, 0.5f, 89.9f) * Mathf.Deg2Rad;
+                    float fovRadiusPixels = Screen.height * 0.5f * (Mathf.Tan(halfFovRad) / Mathf.Tan(camHalfFovRad));
+
+                    Vector2 screenCenter = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+                    float dist2D = Vector2.Distance(screenCenter, new Vector2(sp.x, sp.y));
+                    if (dist2D > fovRadiusPixels) return false;
+                }
+                else if (Vector3.Angle(aim.direction, to) > Fov * 0.5f)
+                {
+                    return false;
+                }
+            }
+
             return true;
         }
 
@@ -247,7 +340,7 @@ namespace PoppyMenu
 
         private static void InitProjectilePostfix(ProjectileController projectileController, FireProjectileInfo fireProjectileInfo)
         {
-            if (projectileController == null || projectileController.isPrediction || !NetUtil.IsServer) return;
+            if (projectileController == null || projectileController.isPrediction) return;
             if (!IsLocalOwner(fireProjectileInfo.owner)) return;
 
             if (MagicBullet) projectileController.gameObject.AddComponent<PoppyGhost>();
@@ -255,18 +348,18 @@ namespace PoppyMenu
             if (Active && Target != null)
             {
                 CharacterBody me = PlayerContext.Body;
-                if (me != null && me.teamComponent != null)
-                    projectileController.gameObject.AddComponent<PoppyHoming>().Init(Target.transform, me.teamComponent.teamIndex);
+                TeamIndex team = me != null && me.teamComponent != null ? me.teamComponent.teamIndex : TeamIndex.Player;
+                projectileController.gameObject.AddComponent<PoppyHoming>().Init(Target.transform, team);
             }
         }
 
         internal static void DrawOverlay()
         {
-            if (!Active) return;
+            if (!Enabled && !Active) return;
             Camera cam = Camera.main;
             if (cam == null) return;
             if (ShowFovCircle && UseFov) DrawFovCircle(cam);
-            if (Highlight && Target != null) DrawLock(cam);
+            if (Active && Highlight && Target != null) DrawLock(cam);
         }
 
         private static void DrawLock(Camera cam)
@@ -300,8 +393,11 @@ namespace PoppyMenu
 
         private static void DrawFovCircle(Camera cam)
         {
-            float r = Screen.height * 0.5f * Mathf.Tan(Fov * Mathf.Deg2Rad) / Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
-            r = Mathf.Clamp(r, 8f, Screen.height);
+            float halfFovRad = Mathf.Clamp(Fov * 0.5f, 0.5f, 89.9f) * Mathf.Deg2Rad;
+            float camHalfFovRad = Mathf.Clamp(cam.fieldOfView * 0.5f, 0.5f, 89.9f) * Mathf.Deg2Rad;
+            float r = Screen.height * 0.5f * (Mathf.Tan(halfFovRad) / Mathf.Tan(camHalfFovRad));
+            r = Mathf.Clamp(r, 8f, Screen.height * 1.5f);
+
             float cx = Screen.width * 0.5f, cy = Screen.height * 0.5f;
             Color col = new Color(Theme.Accent.r, Theme.Accent.g, Theme.Accent.b, 0.75f);
             const int seg = 64;
