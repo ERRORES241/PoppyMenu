@@ -32,11 +32,12 @@ Main controls for the local character across three sub-pages:
 - **Survival:** God mode, Semi-Godmode (Buddha), Skills No CD, full heal, hurt, respawn, and instant Kill All Enemies.
 - **Economy:** Give Money, XP, and Lunar Coins with configurable numerical stepper inputs.
 - **Stats:** Live readout and multipliers for damage, attack speed, movement speed, armor, crit chance, and max health.
-- **Items:** Searchable item and equipment giver with tier color coding, Stack Inventory (Shrine of Order), Reroll Items, Clear Inventory, Undo Last Change, and Equipment No Cooldown toggle.
+- **Items:** Searchable item and equipment giver with tier color coding, Stack Inventory (Shrine of Order), Reroll Items, Clear Inventory, Undo Last Change, Equipment No Cooldown toggle, and configurable **Sale Star Drop Count Multiplier** (customize item count spawned on Sale Star triggers).
 
 ### World
 Stage, run, and server management across sub-pages:
 - **World:** Match freeze, run timer freeze, time scaling (slow motion/fast forward), No Enemies mode, experience lock, and profile save prevention.
+- **Shrines:** **100% Shrine of Chance Win Rate** (guarantees an item drop on every roll without empty failures) and **Infinite Shrine of Chance Uses** (prevents shrines from closing after max purchases).
 - **Spawn:** Spawn monsters or interactables at crosshairs with team and count parameters. Cleaned catalog names without raw asset tags.
 - **Run:** Set stage clear count, run time, team level, toggle active artifacts, and stage skip.
 - **Teleporter:** Instant teleporter charge toggle, stage skip, and Mountain Shrine stack adder.
