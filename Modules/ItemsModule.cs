@@ -9,6 +9,8 @@ namespace PoppyMenu
 
         internal static bool NoEquipmentCooldown;
         internal static int GiveCount = 1;
+        internal static bool SaleStarCheat;
+        internal static int SaleStarDropCount = 5;
 
         internal override void DrawMenu()
         {
@@ -37,6 +39,44 @@ namespace PoppyMenu
             NoEquipmentCooldown = Widgets.Toggle("No Equipment Cooldown", NoEquipmentCooldown);
             Widgets.ConfirmButton("items.clearinv", "Clear Inventory", () => NetUtil.Do(PoppyOp.ClearInventory));
             Widgets.SectionEnd();
+
+            Widgets.SectionBegin("Sale Star (Выгодная звезда)");
+            SaleStarCheat = Widgets.Toggle("Force Drop Count", SaleStarCheat);
+            if (SaleStarCheat)
+            {
+                SaleStarDropCount = Widgets.IntStepper("Drop Count", SaleStarDropCount, 1, 2, 5);
+            }
+            Widgets.SectionEnd();
+        }
+
+        internal static void Init()
+        {
+            On.RoR2.PurchaseInteraction.OnInteractionBegin += PurchaseInteraction_OnInteractionBegin;
+        }
+
+        private static void PurchaseInteraction_OnInteractionBegin(On.RoR2.PurchaseInteraction.orig_OnInteractionBegin orig, PurchaseInteraction self, Interactor activator)
+        {
+            var body = activator.GetComponent<CharacterBody>();
+            int prevConsumed = 0;
+            if (body && body.inventory)
+            {
+                prevConsumed = body.inventory.GetItemCount(DLC2Content.Items.LowerPricedChestsConsumed);
+            }
+
+            orig(self, activator);
+
+            if (SaleStarCheat && body && body.inventory)
+            {
+                int postConsumed = body.inventory.GetItemCount(DLC2Content.Items.LowerPricedChestsConsumed);
+                if (postConsumed > prevConsumed)
+                {
+                    var chest = self.GetComponent<ChestBehavior>();
+                    if (chest) chest.dropCount = SaleStarDropCount;
+
+                    var roulette = self.GetComponent<RouletteChestController>();
+                    if (roulette) roulette.dropCount = SaleStarDropCount;
+                }
+            }
         }
 
         internal override void Tick()

@@ -12,6 +12,8 @@ namespace PoppyMenu
         internal static ConfigEntry<bool> RequireServerForCheats;
         internal static ConfigEntry<bool> AllowClientCheats;
         internal static ConfigEntry<bool> ShowHud;
+        internal static ConfigEntry<float> HudX;
+        internal static ConfigEntry<float> HudY;
         internal static ConfigEntry<float> WindowX;
         internal static ConfigEntry<float> WindowY;
         internal static ConfigEntry<float> WindowW;
@@ -62,12 +64,19 @@ namespace PoppyMenu
         internal static ConfigEntry<bool> MovementNoclip;
         internal static ConfigEntry<bool> MovementAlwaysSprint;
         internal static ConfigEntry<bool> MovementJumpPack;
+        internal static ConfigEntry<bool> MovementBhop;
+        internal static ConfigEntry<bool> FovOverride;
+        internal static ConfigEntry<float> FovValue;
 
         // Combat Configs
         internal static ConfigEntry<bool> GodMode;
         internal static ConfigEntry<bool> BuddhaMode;
         internal static ConfigEntry<bool> InfiniteSkills;
         internal static ConfigEntry<bool> NoEquipCooldown;
+
+        // Items Configs
+        internal static ConfigEntry<bool> SaleStarCheat;
+        internal static ConfigEntry<int> SaleStarDropCount;
 
         // Stats Configs
         internal static ConfigEntry<bool> StatDmgOn;
@@ -93,6 +102,8 @@ namespace PoppyMenu
             RequireServerForCheats = cfg.Bind("General", "RequireServerForCheats", false, "When true, server-side actions are skipped on non-host clients.");
             AllowClientCheats = cfg.Bind("General", "AllowClientCheats", false, "HOST ONLY: allow other clients to use this menu.");
             ShowHud = cfg.Bind("General", "ShowActiveEffectsHud", true, "Show a small active-effects HUD when the menu is closed.");
+            HudX = cfg.Bind("General", "HudX", 14f, "Remembered HUD X position.");
+            HudY = cfg.Bind("General", "HudY", 14f, "Remembered HUD Y position.");
             WindowX = cfg.Bind("General", "WindowX", 40f, "Remembered menu window X position.");
             WindowY = cfg.Bind("General", "WindowY", 60f, "Remembered menu window Y position.");
             WindowW = cfg.Bind("General", "WindowW", 540f, "Remembered menu window width.");
@@ -150,12 +161,19 @@ namespace PoppyMenu
             MovementNoclip = cfg.Bind("Movement", "Noclip", false, "Noclip toggle.");
             MovementAlwaysSprint = cfg.Bind("Movement", "AlwaysSprint", false, "Always sprint toggle.");
             MovementJumpPack = cfg.Bind("Movement", "JumpPack", false, "Jump pack toggle.");
+            MovementBhop = cfg.Bind("Movement", "Bhop", false, "BunnyHop toggle.");
+            FovOverride = cfg.Bind("Movement", "FovOverride", false, "FOV Changer toggle.");
+            FovValue = cfg.Bind("Movement", "FovValue", 90f, new ConfigDescription("Field of view.", new AcceptableValueRange<float>(60f, 140f)));
 
             // Combat Binds
             GodMode = cfg.Bind("Combat", "GodMode", false, "God mode toggle.");
             BuddhaMode = cfg.Bind("Combat", "BuddhaMode", false, "Buddha mode toggle.");
             InfiniteSkills = cfg.Bind("Combat", "InfiniteSkills", false, "Infinite skills toggle.");
             NoEquipCooldown = cfg.Bind("Combat", "NoEquipCooldown", false, "No equipment cooldown toggle.");
+
+            // Items Binds
+            SaleStarCheat = cfg.Bind("Items", "SaleStarCheat", false, "Force Sale Star to drop a specific amount of items.");
+            SaleStarDropCount = cfg.Bind("Items", "SaleStarDropCount", 5, new ConfigDescription("Number of items for Sale Star to drop.", new AcceptableValueRange<int>(2, 5)));
 
             // Stats Binds
             StatDmgOn = cfg.Bind("Stats", "DamageOn", false, "Damage multiplier toggle.");
@@ -209,11 +227,16 @@ namespace PoppyMenu
             MovementModule.NoClip = MovementNoclip.Value;
             MovementModule.AlwaysSprint = MovementAlwaysSprint.Value;
             MovementModule.JumpPack = MovementJumpPack.Value;
+            MovementModule.Bhop = MovementBhop.Value;
+            RenderModule.FovOverride = FovOverride.Value;
+            RenderModule.FovValue = FovValue.Value;
 
             PlayerModule.GodMode = GodMode.Value;
             Safety.Buddha = BuddhaMode.Value;
             PlayerModule.InfiniteSkills = InfiniteSkills.Value;
             ItemsModule.NoEquipmentCooldown = NoEquipCooldown.Value;
+            ItemsModule.SaleStarCheat = SaleStarCheat.Value;
+            ItemsModule.SaleStarDropCount = SaleStarDropCount.Value;
 
             StatsModule.DamageOn = StatDmgOn.Value;
             StatsModule.DamageMult = StatDmgMult.Value;
@@ -271,11 +294,16 @@ namespace PoppyMenu
             MovementNoclip.Value = MovementModule.NoClip;
             MovementAlwaysSprint.Value = MovementModule.AlwaysSprint;
             MovementJumpPack.Value = MovementModule.JumpPack;
+            MovementBhop.Value = MovementModule.Bhop;
+            FovOverride.Value = RenderModule.FovOverride;
+            FovValue.Value = RenderModule.FovValue;
 
             GodMode.Value = PlayerModule.GodMode;
             BuddhaMode.Value = Safety.Buddha;
             InfiniteSkills.Value = PlayerModule.InfiniteSkills;
             NoEquipCooldown.Value = ItemsModule.NoEquipmentCooldown;
+            SaleStarCheat.Value = ItemsModule.SaleStarCheat;
+            SaleStarDropCount.Value = ItemsModule.SaleStarDropCount;
 
             StatDmgOn.Value = StatsModule.DamageOn;
             StatDmgMult.Value = StatsModule.DamageMult;

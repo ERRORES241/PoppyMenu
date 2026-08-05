@@ -12,6 +12,7 @@ namespace PoppyMenu
         internal static bool NoClip;
         internal static bool AlwaysSprint;
         internal static bool JumpPack;
+        internal static bool Bhop;
 
         internal static void ToggleFlight() => Flight = !Flight;
         internal static void ToggleSprint() => AlwaysSprint = !AlwaysSprint;
@@ -84,6 +85,31 @@ namespace PoppyMenu
             {
                 Vector3 v = motor.velocity; v.y = 40f; motor.velocity = v;
             }
+
+        } // End of Tick()
+
+        internal static void Init()
+        {
+            On.RoR2.PlayerCharacterMasterController.FixedUpdate += PlayerCharacterMasterController_FixedUpdate;
+        }
+
+        private static void PlayerCharacterMasterController_FixedUpdate(On.RoR2.PlayerCharacterMasterController.orig_FixedUpdate orig, PlayerCharacterMasterController self)
+        {
+            orig(self);
+
+            if (Bhop && self.body != null && !InputCapture.Active)
+            {
+                CharacterMotor motor = self.body.characterMotor;
+                InputBankTest input = self.bodyInputs;
+
+                // If player is holding jump and lands on the ground, trick the game into thinking jump was JUST pressed!
+                // This triggers the 100% native RoR2 jump (with proper Wax Quail math, animations, sounds, and state machine transitions).
+                if (motor != null && input != null && motor.isGrounded && input.jump.down)
+                {
+                    input.jump.PushState(false);
+                    input.jump.PushState(true);
+                }
+            }
         }
 
         private void SetCollisions(bool on)
@@ -107,6 +133,7 @@ namespace PoppyMenu
             NoClip = Widgets.Toggle("No-Clip (fly through walls)", NoClip);
             AlwaysSprint = Widgets.Toggle("Always Sprint", AlwaysSprint);
             JumpPack = Widgets.Toggle("Jump Pack", JumpPack);
+            Bhop = Widgets.Toggle("BunnyHop (Auto-jump on land)", Bhop);
             ModConfig.FlightSpeed.Value = Widgets.Slider("Fly Speed", ModConfig.FlightSpeed.Value, 5f, 150f);
             Widgets.Hint("Fly: WASD move, Space up, Left Ctrl down. You can still aim and fire while flying.");
             Widgets.SectionEnd();

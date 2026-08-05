@@ -12,6 +12,9 @@ namespace PoppyMenu
         internal static bool EspInteractables;
         internal static bool EspTeleporter;
 
+        internal static bool FovOverride;
+        internal static float FovValue = 90f;
+
         internal static bool ShowNames = true;
         internal static bool ShowDistance = true;
         internal static bool ShowEnemyHealth = true;
@@ -26,6 +29,7 @@ namespace PoppyMenu
 
         private static GUIStyle _labelStyle;
         private static PressurePlateController[] _plates = new PressurePlateController[0];
+        private static ShrineCleanseBehavior[] _cleansePools = new ShrineCleanseBehavior[0];
         private static SceneDef _lastStageScene;
 
         internal override void Tick()
@@ -34,6 +38,16 @@ namespace PoppyMenu
             {
                 _lastStageScene = null;
                 return;
+            }
+
+            // ── Camera FOV Changer ──
+            if (FovOverride)
+            {
+                foreach (var cameraRig in CameraRigController.readOnlyInstancesList)
+                {
+                    if (cameraRig != null)
+                        cameraRig.baseFov = FovValue;
+                }
             }
 
             SceneDef currentScene = Stage.instance != null ? Stage.instance.sceneDef : null;
@@ -49,12 +63,25 @@ namespace PoppyMenu
             try
             {
                 _plates = Object.FindObjectsOfType<PressurePlateController>();
+                _cleansePools = Object.FindObjectsOfType<ShrineCleanseBehavior>();
             }
             catch { }
         }
 
         internal override void DrawMenu()
         {
+            Widgets.SectionBegin("HUD");
+            ModConfig.ShowHud.Value = Widgets.Toggle("Active Effects HUD", ModConfig.ShowHud.Value);
+            Widgets.SectionEnd();
+
+            Widgets.SectionBegin("Camera & FOV");
+            FovOverride = Widgets.Toggle("FOV Changer", FovOverride);
+            if (FovOverride)
+            {
+                FovValue = Widgets.Slider("Field of View", FovValue, 60f, 140f);
+            }
+            Widgets.SectionEnd();
+
             Widgets.SectionBegin("ESP / Wallhack");
             EspMobs = Widgets.Toggle("Enemies", EspMobs);
             EspInteractables = Widgets.Toggle("Interactables (Chests, Barrels, Pickups)", EspInteractables);
@@ -133,10 +160,17 @@ namespace PoppyMenu
                             if (barrel == null || barrel.opened || barrel.transform == null) continue;
                             if (Culled(origin, barrel.transform.position, out float dist)) continue;
 
-                            string bName = ShowNames ? "Barrel ($0)" : "";
+                            string nameStr = barrel.GetDisplayName();
+                            if (string.IsNullOrEmpty(nameStr)) nameStr = "Barrel";
+                            string bName = ShowNames ? $"{nameStr} ($0)" : "";
+
+                            Color col = new Color(0.85f, 0.82f, 0.55f);
+                            if (barrel.name != null && barrel.name.IndexOf("Void", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                                col = new Color(0.75f, 0.35f, 0.9f);
+
                             string dStr = ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "";
                             string label = BuildMultiLine(bName, "", dStr);
-                            DrawMarker(cam, barrel.transform.position, label, new Color(0.85f, 0.82f, 0.55f));
+                            DrawMarker(cam, barrel.transform.position, label, col);
                         }
                     }
 
@@ -186,6 +220,127 @@ namespace PoppyMenu
                             DrawMarker(cam, gpc.transform.position, label, itemCol);
                         }
                     }
+
+                    // 6. PickupPickerControllers (Scrappers, Void Potentials, Command Cubes)
+                    var pickers = InstanceTracker.GetInstancesList<PickupPickerController>();
+                    if (pickers != null)
+                    {
+                        for (int i = 0; i < pickers.Count; i++)
+                        {
+                            PickupPickerController picker = pickers[i];
+                            if (picker == null || !picker.available || picker.transform == null) continue;
+                            
+                            // Skip if attached to GenericPickupController (some Command Cubes might have it, but usually they don't)
+                            if (picker.GetComponent<GenericPickupController>() != null) continue;
+                            if (Culled(origin, picker.transform.position, out float dist)) continue;
+
+                            string objName = picker.gameObject.name;
+                            string pName = picker.GetContextString(null);
+                            Color pColor = new Color(0.85f, 0.4f, 0.1f); // Default Orange
+
+                            if (objName.IndexOf("CommandCube", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                PickupIndexNetworker networker = picker.GetComponent<PickupIndexNetworker>();
+                                if (networker != null)
+                                {
+                                    string contentName = GetPickupContentInfo(networker.NetworkpickupState.pickupIndex, out Color itemCol, isInteractable: false, isUnchosenCommandCube: true);
+                                    if (itemCol != Color.clear) pColor = itemCol;
+                                    pName = ShowNames ? (!string.IsNullOrEmpty(contentName) ? contentName : "Command Cube") : "";
+                                }
+                            }
+                            else
+                            {
+                                if (string.IsNullOrEmpty(pName))
+                                {
+                                    if (objName.IndexOf("Scrapper", System.StringComparison.OrdinalIgnoreCase) >= 0) pName = "Scrapper";
+                                    else if (objName.IndexOf("Void", System.StringComparison.OrdinalIgnoreCase) >= 0 || objName.IndexOf("OptionPickup", System.StringComparison.OrdinalIgnoreCase) >= 0) pName = "Void Potential";
+                                    else pName = objName.Replace("(Clone)", "").Trim();
+                                }
+                                else if (!ShowNames)
+                                {
+                                    pName = "";
+                                }
+
+                                if (objName.IndexOf("Void", System.StringComparison.OrdinalIgnoreCase) >= 0 || objName.IndexOf("OptionPickup", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                                    pColor = new Color(0.8f, 0.3f, 0.8f); // Purple for Void Potentials
+                            }
+
+                            string label = BuildMultiLine(pName, "", ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "");
+                            DrawMarker(cam, picker.transform.position, label, pColor);
+                        }
+                    }
+
+                    // 7. Cleansing Pools (Not in InstanceTracker)
+                    if (_cleansePools != null)
+                    {
+                        for (int i = 0; i < _cleansePools.Length; i++)
+                        {
+                            ShrineCleanseBehavior pool = _cleansePools[i];
+                            if (pool == null || pool.transform == null) continue;
+                            if (Culled(origin, pool.transform.position, out float dist)) continue;
+
+                            string pName = ShowNames ? Language.GetString(pool.contextToken) : "";
+                            if (string.IsNullOrEmpty(pName) || pName == pool.contextToken) pName = "Cleansing Pool";
+                            
+                            string label = BuildMultiLine(pName, "", ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "");
+                            DrawMarker(cam, pool.transform.position, label, new Color(0.9f, 0.9f, 0.9f));
+                        }
+                    }
+
+                    // 8. Bazaar Upgrade Interactions (Lunar Seers / Soup Cauldrons)
+                    var bazaarUpgrades = InstanceTracker.GetInstancesList<BazaarUpgradeInteraction>();
+                    if (bazaarUpgrades != null)
+                    {
+                        for (int i = 0; i < bazaarUpgrades.Count; i++)
+                        {
+                            var upgrade = bazaarUpgrades[i];
+                            if (upgrade == null || !upgrade.available || upgrade.transform == null) continue;
+                            if (Culled(origin, upgrade.transform.position, out float dist)) continue;
+
+                            string pName = ShowNames ? Language.GetString(upgrade.displayNameToken) : "";
+                            if (string.IsNullOrEmpty(pName) || pName == upgrade.displayNameToken) pName = "Bazaar Upgrade";
+                            
+                            string label = BuildMultiLine(pName, "", ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "");
+                            DrawMarker(cam, upgrade.transform.position, label, new Color(0.3f, 0.5f, 0.9f));
+                        }
+                    }
+
+                    // 9. Geode / Void Seed
+                    var geodes = InstanceTracker.GetInstancesList<GeodeController>();
+                    if (geodes != null)
+                    {
+                        for (int i = 0; i < geodes.Count; i++)
+                        {
+                            var geode = geodes[i];
+                            if (geode == null || !geode.Networkavailable || geode.transform == null) continue;
+                            if (Culled(origin, geode.transform.position, out float dist)) continue;
+
+                            string pName = ShowNames ? geode.GetDisplayName() : "";
+                            if (string.IsNullOrEmpty(pName) || pName == geode.displayNameToken) pName = "Void Seed / Geode";
+
+                            string label = BuildMultiLine(pName, "", ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "");
+                            DrawMarker(cam, geode.transform.position, label, new Color(0.7f, 0.2f, 0.7f));
+                        }
+                    }
+
+                    // 10. Drone Combiner (Col. Droneman)
+                    var combiners = InstanceTracker.GetInstancesList<DroneCombinerController>();
+                    if (combiners != null)
+                    {
+                        for (int i = 0; i < combiners.Count; i++)
+                        {
+                            var combiner = combiners[i];
+                            if (combiner == null || combiner.transform == null) continue;
+                            if (Culled(origin, combiner.transform.position, out float dist)) continue;
+
+                            string pName = ShowNames ? combiner.GetContextString(null) : "";
+                            if (string.IsNullOrEmpty(pName)) pName = "Drone Combiner";
+
+                            string label = BuildMultiLine(pName, "", ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "");
+                            DrawMarker(cam, combiner.transform.position, label, new Color(0.8f, 0.8f, 0.8f));
+                        }
+                    }
+
                 }
 
                 if (EspTeleporter)
@@ -221,7 +376,14 @@ namespace PoppyMenu
             overrideColor = InteractableColor;
             if (pi == null) return "";
 
-            bool isCloaked = (pi.name != null && (pi.name.IndexOf("Stealthed", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.name.IndexOf("Cloaked", System.StringComparison.OrdinalIgnoreCase) >= 0)) || pi.displayNameToken == "CHEST1STEALTHED_NAME";
+            if (pi.gameObject.name.IndexOf("Void", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                overrideColor = new Color(0.8f, 0.3f, 0.8f); // Purple for Void Cradles
+            else if (pi.gameObject.name.IndexOf("Blood", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                overrideColor = new Color(0.8f, 0.2f, 0.2f); // Red for Blood Shrines
+            else if (pi.costType == CostTypeIndex.LunarCoin)
+                overrideColor = new Color(0.4f, 0.6f, 0.9f); // Blueish for Lunar interactions
+
+            bool isCloaked = (pi.gameObject.name.IndexOf("Stealthed", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.gameObject.name.IndexOf("Cloaked", System.StringComparison.OrdinalIgnoreCase) >= 0) || pi.displayNameToken == "CHEST1STEALTHED_NAME";
 
             string costStr = "";
             if (pi.cost > 0)
@@ -268,7 +430,7 @@ namespace PoppyMenu
             string contentStr = "";
             if (pickupIndex != PickupIndex.none)
             {
-                string contentName = GetPickupContentInfo(pickupIndex, out Color itemColor);
+                string contentName = GetPickupContentInfo(pickupIndex, out Color itemColor, isInteractable: true);
                 if (itemColor != Color.clear && !isCloaked) overrideColor = itemColor;
 
                 if (!string.IsNullOrEmpty(contentName))
@@ -287,7 +449,22 @@ namespace PoppyMenu
             overrideColor = InteractableColor;
             if (gpc == null) return "";
 
-            string contentName = GetPickupContentInfo(gpc.pickupIndex, out Color itemCol);
+            bool isVoidPotential = gpc.gameObject.name.IndexOf("OptionPickup", System.StringComparison.OrdinalIgnoreCase) >= 0;
+            if (isVoidPotential)
+            {
+                overrideColor = new Color(0.8f, 0.3f, 0.8f); // Purple
+                string pName = "Void Potential";
+                PickupPickerController picker = gpc.GetComponent<PickupPickerController>();
+                if (picker != null)
+                {
+                    string contextStr = picker.GetContextString(null);
+                    if (!string.IsNullOrEmpty(contextStr)) pName = contextStr;
+                }
+                return BuildMultiLine(ShowNames ? pName : "", "", ShowDistance ? $"{Mathf.RoundToInt(dist)}m" : "");
+            }
+
+            bool isUnchosenCommand = IsCommandArtifactActive() && (gpc.GetComponent<PickupPickerController>() != null);
+            string contentName = GetPickupContentInfo(gpc.pickupIndex, out Color itemCol, isInteractable: false, isUnchosenCommandCube: isUnchosenCommand);
             if (itemCol != Color.clear) overrideColor = itemCol;
 
             string baseName = ShowNames ? (!string.IsNullOrEmpty(contentName) ? contentName : "Pickup") : "";
@@ -296,7 +473,7 @@ namespace PoppyMenu
             return BuildMultiLine(baseName, "", distStr);
         }
 
-        private static string GetPickupContentInfo(PickupIndex pickupIndex, out Color contentColor)
+        private static string GetPickupContentInfo(PickupIndex pickupIndex, out Color contentColor, bool isInteractable = false, bool isUnchosenCommandCube = false)
         {
             contentColor = InteractableColor;
             if (pickupIndex == PickupIndex.none) return null;
@@ -306,20 +483,34 @@ namespace PoppyMenu
                 PickupDef pickupDef = PickupCatalog.GetPickupDef(pickupIndex);
                 if (pickupDef == null) return null;
 
-                bool isCommand = IsCommandArtifactActive();
                 contentColor = pickupDef.baseColor != Color.clear ? pickupDef.baseColor : InteractableColor;
 
-                if (isCommand)
+                bool isCommandActive = IsCommandArtifactActive();
+
+                // If Artifact of Command is active and this is an interactable (chest/terminal) or an unchosen Command Cube
+                if (isCommandActive && (isInteractable || isUnchosenCommandCube || (pickupDef.itemIndex == ItemIndex.None && pickupDef.equipmentIndex == EquipmentIndex.None)))
                 {
                     return GetTierRarityName(pickupDef.itemTier);
                 }
-                else
+
+                // Otherwise, get the specific item or equipment name (for normal items or items already chosen from Command cubes)
+                if (pickupDef.itemIndex != ItemIndex.None || pickupDef.equipmentIndex != EquipmentIndex.None)
                 {
                     string name = Language.GetString(pickupDef.nameToken);
                     if (string.IsNullOrEmpty(name) || name == pickupDef.nameToken)
                         name = pickupDef.internalName;
                     return name;
                 }
+
+                if (pickupDef.itemTier != ItemTier.AssignedAtRuntime)
+                {
+                    return GetTierRarityName(pickupDef.itemTier);
+                }
+
+                string fallbackName = Language.GetString(pickupDef.nameToken);
+                if (string.IsNullOrEmpty(fallbackName) || fallbackName == pickupDef.nameToken)
+                    fallbackName = pickupDef.internalName;
+                return fallbackName;
             }
             catch
             {
@@ -331,16 +522,16 @@ namespace PoppyMenu
         {
             switch (tier)
             {
-                case ItemTier.Tier1: return "White (Common)";
-                case ItemTier.Tier2: return "Green (Uncommon)";
-                case ItemTier.Tier3: return "Red (Legendary)";
-                case ItemTier.Boss: return "Yellow (Boss)";
-                case ItemTier.Lunar: return "Blue (Lunar)";
+                case ItemTier.Tier1: return "Common";
+                case ItemTier.Tier2: return "Uncommon";
+                case ItemTier.Tier3: return "Legendary";
+                case ItemTier.Boss: return "Boss";
+                case ItemTier.Lunar: return "Lunar";
                 case ItemTier.VoidTier1:
                 case ItemTier.VoidTier2:
                 case ItemTier.VoidTier3:
-                case ItemTier.VoidBoss: return "Purple (Void)";
-                default: return "Command Essence";
+                case ItemTier.VoidBoss: return "Void";
+                default: return "Equipment";
             }
         }
 

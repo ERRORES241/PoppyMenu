@@ -54,10 +54,6 @@ namespace PoppyMenu
             Widgets.PickerButton("Spawn Interactable...", "Spawn Interactable", interactables);
             Widgets.Hint("Spawns where you aim, or just ahead of you.");
             Widgets.SectionEnd();
-
-            Widgets.SectionBegin("Combat");
-            Widgets.DangerButton("Kill All Enemies", () => NetUtil.Do(PoppyOp.KillAllEnemies));
-            Widgets.SectionEnd();
         }
     }
 }

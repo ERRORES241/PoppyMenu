@@ -6,7 +6,7 @@ namespace PoppyMenu
 {
     internal class PlayerModule : PoppyModule
     {
-        internal override string Name => "Combat";
+        internal override string Name => "General";
 
         internal static bool GodMode;
         internal static bool InfiniteSkills;
@@ -30,7 +30,7 @@ namespace PoppyMenu
 
         internal override void DrawMenu()
         {
-            Widgets.SectionBegin("Combat");
+            Widgets.SectionBegin("Survival");
             GodMode = Widgets.Toggle("God Mode", GodMode);
             Safety.Buddha = Widgets.Toggle("Buddha (survive lethal hits)", Safety.Buddha);
             InfiniteSkills = Widgets.Toggle("Infinite Skills", InfiniteSkills);
@@ -47,10 +47,18 @@ namespace PoppyMenu
             Widgets.Button("Respawn", () => NetUtil.Do(PoppyOp.Respawn));
             Widgets.SectionEnd();
 
-            Widgets.SectionBegin("Grants");
+            Widgets.SectionBegin("Economy");
+            ModConfig.GiveMoneyAmount.Value = Widgets.IntStepper("Money", ModConfig.GiveMoneyAmount.Value, 1000, 0, 1000000000);
             Widgets.Button("Give Money", () => NetUtil.Do(PoppyOp.GiveMoney, i1: ModConfig.GiveMoneyAmount.Value));
+            ModConfig.GiveXpAmount.Value = Widgets.IntStepper("XP", ModConfig.GiveXpAmount.Value, 100, 0, 1000000000);
             Widgets.Button("Give XP", () => NetUtil.Do(PoppyOp.GiveXp, i1: ModConfig.GiveXpAmount.Value));
+            ModConfig.GiveCoinsAmount.Value = Widgets.IntStepper("Coins", ModConfig.GiveCoinsAmount.Value, 5, 0, 100000);
             Widgets.Button("Give Lunar Coins", () => NetUtil.Do(PoppyOp.GiveLunar, i1: ModConfig.GiveCoinsAmount.Value));
+            Widgets.SectionEnd();
+
+            Widgets.SectionBegin("Quick Actions");
+            Widgets.PrimaryButton("Give All Items", () => NetUtil.Do(PoppyOp.GiveAllItems, i2: 1));
+            Widgets.DangerButton("Kill All Enemies", () => NetUtil.Do(PoppyOp.KillAllEnemies));
             Widgets.SectionEnd();
 
             Widgets.SectionBegin("Buffs & DoTs");

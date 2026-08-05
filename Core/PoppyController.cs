@@ -9,34 +9,31 @@ namespace PoppyMenu
         private readonly List<TabGroup> _groups = new List<TabGroup>();
         private bool _catalogsTried;
         private string _lastScene;
-        private bool _pendingAutoApply;
+        private static bool _startupConfigApplied;
 
         private static string ActiveScene() => UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
 
         private void Awake()
         {
-            _groups.Add(new TabGroup("Home", new HomeModule()));
-            _groups.Add(new TabGroup("Combat", new AimbotModule(), new PlayerModule()));
+            _groups.Add(new TabGroup("Aimbot", new AimbotModule()));
             _groups.Add(new TabGroup("Visuals", new RenderModule()));
             _groups.Add(new TabGroup("Movement", new MovementModule()));
-            _groups.Add(new TabGroup("Stats & Items", new StatsModule(), new ItemsModule(), new CharacterModule()));
-            _groups.Add(new TabGroup("World", new WorldModule(), new TeleporterModule(), new SpawnModule(), new RunModule()));
-            _groups.Add(new TabGroup("Lobby", new PlayersModule()));
-            _groups.Add(new TabGroup("Configs", new ConfigsModule(), new KeybindsModule(), new SettingsModule(), new MacrosModule(), new ConsoleModule()));
+            _groups.Add(new TabGroup("Player", new PlayerModule(), new StatsModule(), new ItemsModule(), new CharacterModule()));
+            _groups.Add(new TabGroup("World", new WorldModule(), new TeleporterModule(), new SpawnModule(), new RunModule(), new PlayersModule()));
+            _groups.Add(new TabGroup("Settings", new ConfigsModule(), new KeybindsModule(), new SettingsModule(), new MacrosModule(), new ConsoleModule()));
 
             foreach (TabGroup g in _groups) _modules.AddRange(g.Pages);
-
-            RoR2.CharacterBody.onBodyStartGlobal += OnBodyStart;
 
             gameObject.AddComponent<CursorOverlay>();
         }
 
-        private void OnBodyStart(RoR2.CharacterBody body)
+        private void Start()
         {
-            if (body == null) return;
-            RoR2.NetworkUser nu = RoR2.Util.LookUpBodyNetworkUser(body);
-            if (nu != null && RoR2.NetworkUser.readOnlyLocalPlayersList.Contains(nu))
-                _pendingAutoApply = true;
+            if (!_startupConfigApplied)
+            {
+                _startupConfigApplied = true;
+                try { ConfigsModule.ApplyStartupConfig(); } catch (System.Exception e) { Log.Error(e); }
+            }
         }
 
         private void Update()
@@ -68,12 +65,6 @@ namespace PoppyMenu
             if (Rebind.IsActive && !MenuRoot.Visible) Rebind.Cancel();
 
             if (!PlayerContext.InGame) WorldModule.RestoreTime();
-
-            if (_pendingAutoApply && PlayerContext.HasBody)
-            {
-                _pendingAutoApply = false;
-                try { ConfigsModule.ApplyStartupConfig(); } catch (System.Exception e) { Log.Error(e); }
-            }
 
             HandleHotkeys();
 
@@ -133,8 +124,6 @@ namespace PoppyMenu
 
         private void OnDestroy()
         {
-            RoR2.CharacterBody.onBodyStartGlobal -= OnBodyStart;
-
             MenuRoot.Visible = false;
             ListPicker.Close();
             try { InputCapture.Shutdown(); } catch { }
