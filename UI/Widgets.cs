@@ -11,6 +11,8 @@ namespace PoppyMenu
          *  Text
          * ═══════════════════════════════════════════════════════════════ */
 
+        internal static string HoveredTooltip;
+
         internal static void Header(string text)
         {
             GUILayout.Space(2);
@@ -18,7 +20,18 @@ namespace PoppyMenu
         }
 
         internal static void Label(string text) => GUILayout.Label(text, Theme.Label);
-        internal static void Hint(string text)  => GUILayout.Label(text, Theme.Hint);
+
+        internal static void Hint(string text)
+        {
+            if (Event.current.type == EventType.Repaint)
+            {
+                Rect r = GUILayoutUtility.GetLastRect();
+                if (r.Contains(Event.current.mousePosition))
+                {
+                    HoveredTooltip = text;
+                }
+            }
+        }
 
         internal static void Separator()
         {

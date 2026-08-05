@@ -397,10 +397,6 @@ namespace PoppyMenu
                 else
                     costStr = $" (${pi.cost})";
             }
-            else if (isCloaked)
-            {
-                costStr = " ($0)";
-            }
 
             string baseName = ShowNames ? (isCloaked ? "Cloaked Chest" : pi.GetDisplayName()) : "";
             if (string.IsNullOrEmpty(baseName) && ShowNames) baseName = pi.name.Replace("(Clone)", "").Trim();

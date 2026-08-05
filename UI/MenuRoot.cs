@@ -47,6 +47,34 @@ namespace PoppyMenu
                 DrawHud();
 
             ListPicker.Draw();
+
+            if (Visible && !string.IsNullOrEmpty(Widgets.HoveredTooltip))
+                DrawTooltip();
+
+            if (Event.current.type == EventType.Repaint)
+                Widgets.HoveredTooltip = null;
+        }
+
+        private static void DrawTooltip()
+        {
+            float scale = Mathf.Max(0.1f, ModConfig.UiScale.Value);
+            GUIStyle style = new GUIStyle(Theme.Hint);
+            style.wordWrap = true;
+            style.padding = new RectOffset(8, 8, 6, 6);
+            style.normal.background = Theme.RoundedRect(8, 8, 8, new Color(0.1f, 0.1f, 0.12f, 0.98f));
+            style.normal.textColor = new Color(0.9f, 0.9f, 0.9f);
+
+            float w = 260f;
+            float h = style.CalcHeight(new GUIContent(Widgets.HoveredTooltip), w);
+
+            Vector2 mouse = Event.current.mousePosition;
+            float x = mouse.x + 12f;
+            float y = mouse.y + 12f;
+
+            if (x + w > Screen.width / scale) x = mouse.x - w - 8f;
+            if (y + h > Screen.height / scale) y = mouse.y - h - 8f;
+
+            GUI.Box(new Rect(x, y, w, h), Widgets.HoveredTooltip, style);
         }
 
         internal static void SaveLayout()
