@@ -16,7 +16,9 @@ Organized into clean top-level tabs and focused sub-pages.
 
 ### Visuals
 - ESP for enemies, interactables, and teleporters through walls.
-- **Category Filters:** Toggle ESP rendering independently for Chests/Multishops, Shrines, Drones/Turrets, Printers, Scrappers, Barrels, and Other interactables (including Void Potentials).
+- **Category Filters:** Toggle ESP rendering independently for Chests/Multishops, Shrines, Drones/Turrets, Printers, Scrappers, Barrels, and Other interactables.
+- **Shrine & Pricing Accuracy:** Correct price formatting for shrines (Mountain Shrines, Shrine of Chance, Cleansing Pools) that do not require money, omitting misleading costs.
+- **Void Potentials & Cradles:** Distinct purple markers for Void Potentials (OptionPickup) and Void Cradles.
 - **Dynamic Localization:** ESP labels use native game language tokens (Russian, English, etc.).
 - **Active Effects HUD:** Draggable on-screen HUD displaying currently active toggles (God Mode, Aimbot, Sprint, etc.) with automatic pixel-accurate height scaling.
 
