@@ -222,6 +222,10 @@ namespace PoppyMenu
             GUILayout.EndHorizontal();
             Widgets.SectionEnd();
 
+            Widgets.SectionBegin("Global Actions");
+            Widgets.DangerButton("Kill All Enemies", () => NetUtil.Do(PoppyOp.KillAllEnemies));
+            Widgets.SectionEnd();
+
             Widgets.SectionBegin("Shrines");
             GuaranteedShrineChance = Widgets.Toggle("100% Shrine of Chance Win Rate", GuaranteedShrineChance);
             Widgets.Hint("Guarantees an item drop on every offer at Shrine of Chance (no fails). Host or solo.");

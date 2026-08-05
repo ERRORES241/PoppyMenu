@@ -21,6 +21,10 @@ namespace PoppyMenu
             if (update != null)
                 _h.Patch(update, prefix: new HarmonyMethod(typeof(InputCapture), nameof(PcmcUpdatePrefix)));
 
+            var fixedUpdate = AccessTools.Method(typeof(PlayerCharacterMasterController), "FixedUpdate");
+            if (fixedUpdate != null)
+                _h.Patch(fixedUpdate, prefix: new HarmonyMethod(typeof(InputCapture), nameof(PcmcFixedUpdatePrefix)));
+
             var raycastAll = AccessTools.Method(typeof(EventSystem), nameof(EventSystem.RaycastAll));
             if (raycastAll != null)
                 _h.Patch(raycastAll, prefix: new HarmonyMethod(typeof(InputCapture), nameof(EventSystemRaycastAllPrefix)));
@@ -80,9 +84,26 @@ namespace PoppyMenu
 
             ib.moveVector = Vector3.zero;
             ib.SetRawMoveStates(Vector2.zero);
-            ib.skill1 = default; ib.skill2 = default; ib.skill3 = default; ib.skill4 = default;
-            ib.jump = default; ib.sprint = default; ib.interact = default;
-            ib.activateEquipment = default; ib.nextEquipment = default; ib.prevEquipment = default; ib.ping = default;
+            return false;
+        }
+
+        private static bool PcmcFixedUpdatePrefix(PlayerCharacterMasterController __instance)
+        {
+            if (!Active) return true;
+            InputBankTest ib = __instance.bodyInputs;
+            if (ib == null || ib != PlayerContext.InputBank) return true;
+
+            ib.skill1.PushState(false);
+            ib.skill2.PushState(false);
+            ib.skill3.PushState(false);
+            ib.skill4.PushState(false);
+            ib.jump.PushState(false);
+            ib.sprint.PushState(false);
+            ib.interact.PushState(false);
+            ib.activateEquipment.PushState(false);
+            ib.ping.PushState(false);
+            ib.nextEquipment.PushState(false);
+            ib.prevEquipment.PushState(false);
             return false;
         }
     }

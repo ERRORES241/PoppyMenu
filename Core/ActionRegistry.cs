@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using RoR2;
+using UnityEngine;
 
 namespace PoppyMenu
 {
@@ -41,8 +43,8 @@ namespace PoppyMenu
             Add("menu.disableAll", "Menu", "Disable everything", Cheats.DisableAll);
 
             Add("player.god", "Player", "God mode", () => PlayerModule.GodMode = !PlayerModule.GodMode);
-            Add("player.buddha", "Player", "Buddha", () => Safety.Buddha = !Safety.Buddha);
-            Add("player.skills", "Player", "Infinite skills", () => PlayerModule.InfiniteSkills = !PlayerModule.InfiniteSkills);
+            Add("player.buddha", "Player", "Semi-Godmode", () => Safety.Buddha = !Safety.Buddha);
+            Add("player.skills", "Player", "Skills No CD", () => PlayerModule.InfiniteSkills = !PlayerModule.InfiniteSkills);
             Add("player.healFull", "Player", "Heal to full", () => NetUtil.Do(PoppyOp.HealFull));
             Add("player.respawn", "Player", "Respawn", () => NetUtil.Do(PoppyOp.Respawn));
 
@@ -60,16 +62,21 @@ namespace PoppyMenu
             Add("items.reroll", "Items", "Reroll items", () => NetUtil.Do(PoppyOp.RollItems));
             Add("items.noEquipCd", "Items", "No equipment cooldown", () => ItemsModule.NoEquipmentCooldown = !ItemsModule.NoEquipmentCooldown);
 
-            Add("combat.killAll", "Combat", "Kill all enemies", () => NetUtil.Do(PoppyOp.KillAllEnemies));
-            Add("combat.noEnemies", "Combat", "No enemies", () => Safety.NoEnemies = !Safety.NoEnemies);
+            Add("combat.killAll", "World", "Kill all enemies", () => NetUtil.Do(PoppyOp.KillAllEnemies));
+            Add("combat.noEnemies", "Safety", "No enemies", () => Safety.NoEnemies = !Safety.NoEnemies);
 
-            Add("tp.charge", "Teleporter", "Charge teleporter", () => NetUtil.Do(PoppyOp.ChargeTeleporter));
+            Add("tp.charge", "Teleporter", "Instant charge (toggle)", () => TeleporterModule.InstaCharge = !TeleporterModule.InstaCharge);
             Add("tp.skip", "Teleporter", "Skip stage", () => NetUtil.Do(PoppyOp.SkipStage));
             Add("tp.portals", "Teleporter", "Spawn all portals", () =>
             {
                 NetUtil.Do(PoppyOp.SpawnShopPortal);
                 NetUtil.Do(PoppyOp.SpawnGoldshoresPortal);
                 NetUtil.Do(PoppyOp.SpawnMSPortal);
+                TeleporterInteraction tp = TeleporterInteraction.instance;
+                Vector3 pos = tp != null ? tp.transform.position + UnityEngine.Random.insideUnitSphere * 5f : (PlayerContext.HasBody ? PlayerContext.Body.footPosition + UnityEngine.Random.insideUnitSphere * 5f : Vector3.zero);
+                NetUtil.Do(PoppyOp.Spawn, i1: 1, i2: (int)TeamIndex.Neutral, s1: "iscVoidPortal", f1: pos.x, f2: pos.y, f3: pos.z);
+                NetUtil.Do(PoppyOp.Spawn, i1: 1, i2: (int)TeamIndex.Neutral, s1: "iscDeepVoidPortal", f1: pos.x, f2: pos.y, f3: pos.z);
+                NetUtil.Do(PoppyOp.Spawn, i1: 1, i2: (int)TeamIndex.Neutral, s1: "iscColossusPortal", f1: pos.x, f2: pos.y, f3: pos.z);
             });
 
             Add("world.freeze", "World", "Freeze match", () => WorldModule.FreezeMatch = !WorldModule.FreezeMatch);
@@ -79,6 +86,10 @@ namespace PoppyMenu
             Add("esp.interactables", "ESP", "Interactable ESP", () => RenderModule.EspInteractables = !RenderModule.EspInteractables);
             Add("esp.teleporter", "ESP", "Teleporter ESP", () => RenderModule.EspTeleporter = !RenderModule.EspTeleporter);
 
+            Add("fun.instaCharge", "Fun", "Instant Ult Charge", () => FunModule.RailgunnerInstaCharge = !FunModule.RailgunnerInstaCharge);
+            Add("fun.noUltCooldown", "Fun", "No Ult Cooldown", () => FunModule.RailgunnerNoUltCooldown = !FunModule.RailgunnerNoUltCooldown);
+            Add("fun.ultSpam", "Fun", "Ult Spam (Every Shot = Ult)", () => FunModule.RailgunnerUltSpam = !FunModule.RailgunnerUltSpam);
+
             Add("macro.midgame", "Macros", "Mid-game loadout", () => PoppyConsole.Submit("midgame"));
             Add("macro.lategame", "Macros", "End-game loadout", () => PoppyConsole.Submit("lategame"));
             Add("macro.dtzoom", "Macros", "Zoom items", () => PoppyConsole.Submit("dtzoom"));
@@ -86,6 +97,7 @@ namespace PoppyMenu
             Add("tab.player", "Open tab", "Player tab", () => MenuRoot.SelectTabByName("Player"));
             Add("tab.items", "Open tab", "Items tab", () => MenuRoot.SelectTabByName("Items"));
             Add("tab.players", "Open tab", "Players tab", () => MenuRoot.SelectTabByName("Players"));
+            Add("tab.fun", "Open tab", "Fun tab", () => MenuRoot.SelectTabByName("Fun"));
             Add("tab.console", "Open tab", "Console tab", () => MenuRoot.SelectTabByName("Console"));
             Add("tab.keybinds", "Open tab", "Keybinds tab", () => MenuRoot.SelectTabByName("Keybinds"));
         }

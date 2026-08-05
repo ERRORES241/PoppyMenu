@@ -241,10 +241,51 @@ namespace PoppyMenu
             SpawnCards.Clear();
             foreach (SpawnCard card in Resources.FindObjectsOfTypeAll<SpawnCard>())
             {
-                if (card == null)
+                if (card == null || card.prefab == null)
                     continue;
+                
                 bool interactable = card is InteractableSpawnCard;
-                SpawnCards.Add(new SpawnEntry(card, card.name, interactable));
+                string displayName = card.name;
+
+                try
+                {
+                    if (interactable)
+                    {
+                        var pi = card.prefab.GetComponent<PurchaseInteraction>();
+                        if (pi != null && !string.IsNullOrEmpty(pi.displayNameToken))
+                            displayName = Language.GetString(pi.displayNameToken);
+                        else
+                        {
+                            var b = card.prefab.GetComponent<BarrelInteraction>();
+                            if (b != null) displayName = Language.GetString("BARREL1_NAME");
+                            else
+                            {
+                                var sn = card.prefab.GetComponent<GenericDisplayNameProvider>();
+                                if (sn != null && !string.IsNullOrEmpty(sn.displayToken))
+                                    displayName = Language.GetString(sn.displayToken);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var master = card.prefab.GetComponent<CharacterMaster>();
+                        if (master != null && master.bodyPrefab != null)
+                        {
+                            var body = master.bodyPrefab.GetComponent<CharacterBody>();
+                            if (body != null && !string.IsNullOrEmpty(body.baseNameToken))
+                                displayName = Language.GetString(body.baseNameToken);
+                        }
+                    }
+                }
+                catch { }
+
+                // If translation fails or doesn't exist, we fallback to card.name
+                if (displayName == card.name || string.IsNullOrEmpty(displayName))
+                    displayName = card.name;
+                
+                string finalName = displayName;
+
+                SpawnCards.Add(new SpawnEntry(card, finalName, interactable));
             }
             SpawnCards.Sort((a, b) => string.Compare(a.Name, b.Name, System.StringComparison.OrdinalIgnoreCase));
         }

@@ -11,7 +11,8 @@ namespace PoppyMenu
          *  Text
          * ═══════════════════════════════════════════════════════════════ */
 
-        internal static string HoveredTooltip;
+        internal static string CurrentTooltip;
+        internal static string NextTooltip;
 
         internal static void Header(string text)
         {
@@ -25,10 +26,16 @@ namespace PoppyMenu
         {
             if (Event.current.type == EventType.Repaint)
             {
+                if (ListPicker.IsOpen)
+                {
+                    Vector2 screenMouse = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
+                    if (ListPicker.ContainsPoint(screenMouse)) return;
+                }
+
                 Rect r = GUILayoutUtility.GetLastRect();
                 if (r.Contains(Event.current.mousePosition))
                 {
-                    HoveredTooltip = text;
+                    NextTooltip = text;
                 }
             }
         }

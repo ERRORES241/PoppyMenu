@@ -48,11 +48,14 @@ namespace PoppyMenu
 
             ListPicker.Draw();
 
-            if (Visible && !string.IsNullOrEmpty(Widgets.HoveredTooltip))
+            if (Visible && !string.IsNullOrEmpty(Widgets.CurrentTooltip))
                 DrawTooltip();
 
             if (Event.current.type == EventType.Repaint)
-                Widgets.HoveredTooltip = null;
+            {
+                Widgets.CurrentTooltip = Widgets.NextTooltip;
+                Widgets.NextTooltip = null;
+            }
         }
 
         private static void DrawTooltip()
@@ -61,20 +64,28 @@ namespace PoppyMenu
             GUIStyle style = new GUIStyle(Theme.Hint);
             style.wordWrap = true;
             style.padding = new RectOffset(8, 8, 6, 6);
-            style.normal.background = Theme.RoundedRect(8, 8, 8, new Color(0.1f, 0.1f, 0.12f, 0.98f));
+            style.normal.background = Theme.RoundedRect(24, 24, 8, new Color(0.12f, 0.12f, 0.14f, 1f));
+            style.border = new RectOffset(8, 8, 8, 8);
             style.normal.textColor = new Color(0.9f, 0.9f, 0.9f);
 
             float w = 260f;
-            float h = style.CalcHeight(new GUIContent(Widgets.HoveredTooltip), w);
+            float h = style.CalcHeight(new GUIContent(Widgets.CurrentTooltip), w);
 
-            Vector2 mouse = Event.current.mousePosition;
-            float x = mouse.x + 12f;
-            float y = mouse.y + 12f;
+            Vector2 mouse = Input.mousePosition;
+            float mouseX = mouse.x / scale;
+            float mouseY = (Screen.height - mouse.y) / scale;
+            
+            float x = mouseX + 12f;
+            float y = mouseY + 12f;
 
-            if (x + w > Screen.width / scale) x = mouse.x - w - 8f;
-            if (y + h > Screen.height / scale) y = mouse.y - h - 8f;
+            if (x + w > Screen.width / scale) x = mouseX - w - 8f;
+            if (y + h > Screen.height / scale) y = mouseY - h - 8f;
 
-            GUI.Box(new Rect(x, y, w, h), Widgets.HoveredTooltip, style);
+            GUI.Window(WindowId + 1, new Rect(x, y, w, h), (id) =>
+            {
+                GUI.Label(new Rect(0, 0, w, h), Widgets.CurrentTooltip, style);
+            }, "", GUIStyle.none);
+            GUI.BringWindowToFront(WindowId + 1);
         }
 
         internal static void SaveLayout()
@@ -361,11 +372,11 @@ namespace PoppyMenu
             {
                 _hudTitle = new GUIStyle(Theme.Label)
                 {
-                    richText = true, fontSize = 12, wordWrap = false, fontStyle = FontStyle.Bold
+                    richText = true, fontSize = 12, wordWrap = false, fontStyle = FontStyle.Bold, clipping = TextClipping.Overflow
                 };
                 _hudLine = new GUIStyle(Theme.Hint)
                 {
-                    richText = true, fontSize = 11, wordWrap = false
+                    richText = true, fontSize = 11, wordWrap = false, clipping = TextClipping.Overflow
                 };
             }
 
@@ -383,14 +394,14 @@ namespace PoppyMenu
             if (titleS.x > maxW) maxW = titleS.x;
 
             float padX = 14f;
-            float padY = 12f;
+            float padY = 14f;
             float titleH = 18f;
-            float titleGap = 4f;
-            float lineH = 16f;
-            float lineGap = 1f;
+            float titleGap = 6f;
+            float lineH = 18f;
+            float lineGap = 2f;
 
             float width = maxW + padX * 2f;
-            float h = padY * 2f + titleH + titleGap + active.Count * lineH + Mathf.Max(0, active.Count - 1) * lineGap;
+            float h = padY * 2f + titleH + titleGap + active.Count * (lineH + lineGap) + 10f;
 
             Rect r = new Rect(ModConfig.HudX.Value, ModConfig.HudY.Value, width, h);
 
@@ -451,15 +462,21 @@ namespace PoppyMenu
             _cachedActiveList.Clear();
 
             if (PlayerModule.GodMode)         _cachedActiveList.Add("God Mode");
-            if (PlayerModule.InfiniteSkills)   _cachedActiveList.Add("Infinite Skills");
+            if (Safety.Buddha)                _cachedActiveList.Add("Semi-Godmode");
+            if (PlayerModule.InfiniteSkills)  _cachedActiveList.Add("Skills No CD");
             if (Aim.Enabled)                   _cachedActiveList.Add("Aimbot");
             if (Aim.MagicBullet)               _cachedActiveList.Add("Magic Bullet");
             if (MovementModule.Flight)         _cachedActiveList.Add("Flight");
             if (MovementModule.NoClip)         _cachedActiveList.Add("No-Clip");
             if (MovementModule.AlwaysSprint)   _cachedActiveList.Add("Always Sprint");
             if (MovementModule.JumpPack)       _cachedActiveList.Add("Jump Pack");
+            if (MovementModule.Bhop)           _cachedActiveList.Add("BunnyHop");
+            if (FunModule.RailgunnerInstaCharge) _cachedActiveList.Add("Insta Ult Charge");
+            if (FunModule.RailgunnerNoUltCooldown) _cachedActiveList.Add("No Ult Cooldown");
+            if (FunModule.RailgunnerUltSpam)    _cachedActiveList.Add("Ult Spam");
             if (StatsModule.Active)            _cachedActiveList.Add("Stat Mods");
             if (ItemsModule.NoEquipmentCooldown) _cachedActiveList.Add("No Equip CD");
+            if (TeleporterModule.InstaCharge)  _cachedActiveList.Add("Instant TP Charge");
             if (RenderModule.EspMobs || RenderModule.EspInteractables || RenderModule.EspTeleporter)
                 _cachedActiveList.Add("ESP");
             if (WorldModule.FreezeMatch)       _cachedActiveList.Add("Match Frozen");

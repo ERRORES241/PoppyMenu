@@ -10,6 +10,13 @@ namespace PoppyMenu
 
         internal static bool EspMobs;
         internal static bool EspInteractables;
+        internal static bool EspFilterChests = true;
+        internal static bool EspFilterShrines = true;
+        internal static bool EspFilterPrinters = true;
+        internal static bool EspFilterScrappers = true;
+        internal static bool EspFilterDrones = true;
+        internal static bool EspFilterBarrels = true;
+        internal static bool EspFilterOther = true;
         internal static bool EspTeleporter;
 
         internal static bool FovOverride;
@@ -70,10 +77,6 @@ namespace PoppyMenu
 
         internal override void DrawMenu()
         {
-            Widgets.SectionBegin("HUD");
-            ModConfig.ShowHud.Value = Widgets.Toggle("Active Effects HUD", ModConfig.ShowHud.Value);
-            Widgets.SectionEnd();
-
             Widgets.SectionBegin("Camera & FOV");
             FovOverride = Widgets.Toggle("FOV Changer", FovOverride);
             if (FovOverride)
@@ -84,7 +87,17 @@ namespace PoppyMenu
 
             Widgets.SectionBegin("ESP / Wallhack");
             EspMobs = Widgets.Toggle("Enemies", EspMobs);
-            EspInteractables = Widgets.Toggle("Interactables (Chests, Barrels, Pickups)", EspInteractables);
+            EspInteractables = Widgets.Toggle("Interactables", EspInteractables);
+            if (EspInteractables)
+            {
+                EspFilterChests = Widgets.Toggle("  Chests & Terminals", EspFilterChests);
+                EspFilterShrines = Widgets.Toggle("  Shrines", EspFilterShrines);
+                EspFilterPrinters = Widgets.Toggle("  3D Printers", EspFilterPrinters);
+                EspFilterScrappers = Widgets.Toggle("  Scrappers", EspFilterScrappers);
+                EspFilterDrones = Widgets.Toggle("  Drones & Turrets", EspFilterDrones);
+                EspFilterBarrels = Widgets.Toggle("  Barrels", EspFilterBarrels);
+                EspFilterOther = Widgets.Toggle("  Other", EspFilterOther);
+            }
             EspTeleporter = Widgets.Toggle("Teleporter", EspTeleporter);
             Widgets.Hint("Markers draw through walls while in a run.");
             Widgets.SectionEnd();
@@ -143,6 +156,33 @@ namespace PoppyMenu
                         {
                             PurchaseInteraction pi = purchases[i];
                             if (pi == null || !pi.available || pi.transform == null) continue;
+                            
+                            string goName = pi.gameObject.name.ToLowerInvariant();
+                            if (goName.Contains("chest") || goName.Contains("multishop") || goName.Contains("terminal") || goName.Contains("lockbox") || goName.Contains("cradle"))
+                            {
+                                if (!EspFilterChests) continue;
+                            }
+                            else if (goName.Contains("shrine"))
+                            {
+                                if (!EspFilterShrines) continue;
+                            }
+                            else if (goName.Contains("duplicator") || goName.Contains("printer"))
+                            {
+                                if (!EspFilterPrinters) continue;
+                            }
+                            else if (goName.Contains("scrapper"))
+                            {
+                                if (!EspFilterScrappers) continue;
+                            }
+                            else if (goName.Contains("drone") || goName.Contains("turret"))
+                            {
+                                if (!EspFilterDrones) continue;
+                            }
+                            else
+                            {
+                                if (!EspFilterOther) continue;
+                            }
+
                             if (Culled(origin, pi.transform.position, out float dist)) continue;
 
                             string label = GetInteractableMultiLineLabel(pi, dist, out Color itemCol);
@@ -150,13 +190,17 @@ namespace PoppyMenu
                         }
                     }
 
+
+
                     // 2. Barrels via InstanceTracker
-                    var barrels = InstanceTracker.GetInstancesList<BarrelInteraction>();
-                    if (barrels != null)
+                    if (EspFilterBarrels)
                     {
-                        for (int i = 0; i < barrels.Count; i++)
+                        var barrels = InstanceTracker.GetInstancesList<BarrelInteraction>();
+                        if (barrels != null)
                         {
-                            BarrelInteraction barrel = barrels[i];
+                            for (int i = 0; i < barrels.Count; i++)
+                            {
+                                BarrelInteraction barrel = barrels[i];
                             if (barrel == null || barrel.opened || barrel.transform == null) continue;
                             if (Culled(origin, barrel.transform.position, out float dist)) continue;
 
@@ -172,6 +216,7 @@ namespace PoppyMenu
                             string label = BuildMultiLine(bName, "", dStr);
                             DrawMarker(cam, barrel.transform.position, label, col);
                         }
+                    }
                     }
 
                     // 3. ChestBehaviors (Timed Chests, etc.) via InstanceTracker
@@ -207,17 +252,20 @@ namespace PoppyMenu
                     }
 
                     // 5. Pickups via InstanceTracker
-                    var pickups = InstanceTracker.GetInstancesList<GenericPickupController>();
-                    if (pickups != null)
+                    if (EspFilterOther)
                     {
-                        for (int i = 0; i < pickups.Count; i++)
+                        var pickups = InstanceTracker.GetInstancesList<GenericPickupController>();
+                        if (pickups != null)
                         {
-                            GenericPickupController gpc = pickups[i];
-                            if (gpc == null || gpc.transform == null) continue;
-                            if (Culled(origin, gpc.transform.position, out float dist)) continue;
+                            for (int i = 0; i < pickups.Count; i++)
+                            {
+                                GenericPickupController gpc = pickups[i];
+                                if (gpc == null || gpc.transform == null) continue;
+                                if (Culled(origin, gpc.transform.position, out float dist)) continue;
 
-                            string label = GetPickupMultiLineLabel(gpc, dist, out Color itemCol);
-                            DrawMarker(cam, gpc.transform.position, label, itemCol);
+                                string label = GetPickupMultiLineLabel(gpc, dist, out Color itemCol);
+                                DrawMarker(cam, gpc.transform.position, label, itemCol);
+                            }
                         }
                     }
 
@@ -386,7 +434,7 @@ namespace PoppyMenu
             bool isCloaked = (pi.gameObject.name.IndexOf("Stealthed", System.StringComparison.OrdinalIgnoreCase) >= 0 || pi.gameObject.name.IndexOf("Cloaked", System.StringComparison.OrdinalIgnoreCase) >= 0) || pi.displayNameToken == "CHEST1STEALTHED_NAME";
 
             string costStr = "";
-            if (pi.cost > 0)
+            if (pi.cost > 0 && pi.costType != CostTypeIndex.None)
             {
                 if (pi.costType == CostTypeIndex.Money)
                     costStr = $" (${pi.cost})";

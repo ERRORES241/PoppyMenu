@@ -173,7 +173,7 @@ namespace PoppyMenu
             float bestScore = float.MaxValue;
             bool bestIsBoss = false;
 
-            bool preferWeakPoint = TargetWeakPoints && IsRailgunner(me);
+            bool preferWeakPoint = TargetWeakPoints && IsRailgunner(me) && me.inputBank != null && (me.inputBank.skill2.down || me.inputBank.skill4.down);
             Vector2 screenCenter = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
 
             float fovRadiusPixels = float.MaxValue;

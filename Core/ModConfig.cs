@@ -47,6 +47,13 @@ namespace PoppyMenu
         // ESP Configs
         internal static ConfigEntry<bool> EspMobs;
         internal static ConfigEntry<bool> EspInteractables;
+        internal static ConfigEntry<bool> EspFilterChests;
+        internal static ConfigEntry<bool> EspFilterShrines;
+        internal static ConfigEntry<bool> EspFilterPrinters;
+        internal static ConfigEntry<bool> EspFilterScrappers;
+        internal static ConfigEntry<bool> EspFilterDrones;
+        internal static ConfigEntry<bool> EspFilterBarrels;
+        internal static ConfigEntry<bool> EspFilterOther;
         internal static ConfigEntry<bool> EspTeleporter;
         internal static ConfigEntry<bool> EspShowNames;
         internal static ConfigEntry<bool> EspShowDistance;
@@ -138,6 +145,13 @@ namespace PoppyMenu
             // ESP Binds
             EspMobs = cfg.Bind("ESP", "EspMobs", false, "Show enemy ESP.");
             EspInteractables = cfg.Bind("ESP", "EspInteractables", false, "Show chest & interactables ESP.");
+            EspFilterChests = cfg.Bind("ESP", "EspFilterChests", true, "Filter chests.");
+            EspFilterShrines = cfg.Bind("ESP", "EspFilterShrines", true, "Filter shrines.");
+            EspFilterPrinters = cfg.Bind("ESP", "EspFilterPrinters", true, "Filter printers.");
+            EspFilterScrappers = cfg.Bind("ESP", "EspFilterScrappers", true, "Filter scrappers.");
+            EspFilterDrones = cfg.Bind("ESP", "EspFilterDrones", true, "Filter drones.");
+            EspFilterBarrels = cfg.Bind("ESP", "EspFilterBarrels", true, "Filter barrels.");
+            EspFilterOther = cfg.Bind("ESP", "EspFilterOther", true, "Filter other interactables.");
             EspTeleporter = cfg.Bind("ESP", "EspTeleporter", false, "Show teleporter ESP.");
             EspShowNames = cfg.Bind("ESP", "ShowNames", true, "Show names on ESP.");
             EspShowDistance = cfg.Bind("ESP", "ShowDistance", true, "Show distance on ESP.");

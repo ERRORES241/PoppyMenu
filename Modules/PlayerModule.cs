@@ -32,8 +32,8 @@ namespace PoppyMenu
         {
             Widgets.SectionBegin("Survival");
             GodMode = Widgets.Toggle("God Mode", GodMode);
-            Safety.Buddha = Widgets.Toggle("Buddha (survive lethal hits)", Safety.Buddha);
-            InfiniteSkills = Widgets.Toggle("Infinite Skills", InfiniteSkills);
+            Safety.Buddha = Widgets.Toggle("Semi-Godmode (survive lethal hits at 1 HP)", Safety.Buddha);
+            InfiniteSkills = Widgets.Toggle("Skills No CD", InfiniteSkills);
             Widgets.SectionEnd();
 
             Widgets.SectionBegin("Health");
@@ -54,11 +54,6 @@ namespace PoppyMenu
             Widgets.Button("Give XP", () => NetUtil.Do(PoppyOp.GiveXp, i1: ModConfig.GiveXpAmount.Value));
             ModConfig.GiveCoinsAmount.Value = Widgets.IntStepper("Coins", ModConfig.GiveCoinsAmount.Value, 5, 0, 100000);
             Widgets.Button("Give Lunar Coins", () => NetUtil.Do(PoppyOp.GiveLunar, i1: ModConfig.GiveCoinsAmount.Value));
-            Widgets.SectionEnd();
-
-            Widgets.SectionBegin("Quick Actions");
-            Widgets.PrimaryButton("Give All Items", () => NetUtil.Do(PoppyOp.GiveAllItems, i2: 1));
-            Widgets.DangerButton("Kill All Enemies", () => NetUtil.Do(PoppyOp.KillAllEnemies));
             Widgets.SectionEnd();
 
             Widgets.SectionBegin("Buffs & DoTs");

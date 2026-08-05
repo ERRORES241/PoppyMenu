@@ -34,7 +34,7 @@ namespace PoppyMenu
             Widgets.SectionEnd();
 
             Widgets.SectionBegin("About");
-            Widgets.Label("Poppy Menu  v" + PoppyPlugin.Version);
+            Widgets.Label("Poppy Menu Enhanced  v" + PoppyPlugin.Version);
             Widgets.Hint("Risk of Rain 2 cheat and debug menu. Single-player and private lobbies.");
             Widgets.SectionEnd();
         }

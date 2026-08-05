@@ -53,7 +53,6 @@ namespace PoppyMenu
 
             GUILayout.BeginHorizontal();
             Widgets.Button("Heal", () => NetUtil.DoFor(master, PoppyOp.HealFull));
-            Widgets.Button("Revive", () => NetUtil.DoFor(master, PoppyOp.Respawn));
             Widgets.Button("Hurt " + _hurt, () => NetUtil.DoFor(master, PoppyOp.HurtBody, f1: _hurt));
             Widgets.Button("Kill", () => NetUtil.DoFor(master, PoppyOp.TrueKillTarget));
             GUILayout.EndHorizontal();
@@ -84,26 +83,8 @@ namespace PoppyMenu
             CharacterMaster target = master;
             Widgets.Button("Give item", () =>
                 ItemPicker.Open("Give item to " + user.userName, idx => NetUtil.DoFor(target, PoppyOp.GiveItem, i1: (int)idx, i2: _giveCount)));
-            Widgets.PickerButton("Set body", "Set " + user.userName + "'s body", SetBodyRows(master));
 
             Widgets.SectionEnd();
-        }
-
-        private static List<ListPicker.Row> SetBodyRows(CharacterMaster master)
-        {
-            var rows = new List<ListPicker.Row>(Catalogs.Bodies.Count);
-            foreach (Catalogs.BodyEntry entry in Catalogs.Bodies)
-            {
-                if (entry.Prefab == null) continue;
-                Catalogs.BodyEntry e = entry;
-                rows.Add(new ListPicker.Row(e.Name, Color.white, () =>
-                {
-                    CharacterBody b = master.GetBody();
-                    Vector3 p = b != null ? b.footPosition : Vector3.zero;
-                    NetUtil.DoFor(master, PoppyOp.ChangeBody, f1: p.x, f2: p.y, f3: p.z, s1: e.Prefab.name);
-                }));
-            }
-            return rows;
         }
 
         private static Vector3 MyPos()

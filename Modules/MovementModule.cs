@@ -79,7 +79,12 @@ namespace PoppyMenu
             }
 
             if (AlwaysSprint && body != null)
-                body.isSprinting = true;
+            {
+                bool isMoving = (body.inputBank != null && body.inputBank.moveVector.sqrMagnitude > 0.01f) || (motor != null && motor.velocity.sqrMagnitude > 0.1f);
+                bool attacking = body.inputBank != null && (body.inputBank.skill1.down || body.inputBank.skill2.down || body.inputBank.skill3.down || body.inputBank.skill4.down);
+                if (isMoving && !attacking)
+                    body.isSprinting = true;
+            }
 
             if (JumpPack && motor != null && !InputCapture.Active && Input.GetKeyDown(KeyCode.Space) && !flying)
             {

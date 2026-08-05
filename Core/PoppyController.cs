@@ -18,8 +18,9 @@ namespace PoppyMenu
             _groups.Add(new TabGroup("Aimbot", new AimbotModule()));
             _groups.Add(new TabGroup("Visuals", new RenderModule()));
             _groups.Add(new TabGroup("Movement", new MovementModule()));
-            _groups.Add(new TabGroup("Player", new PlayerModule(), new StatsModule(), new ItemsModule(), new CharacterModule()));
+            _groups.Add(new TabGroup("Player", new PlayerModule(), new StatsModule(), new ItemsModule()));
             _groups.Add(new TabGroup("World", new WorldModule(), new TeleporterModule(), new SpawnModule(), new RunModule(), new PlayersModule()));
+            _groups.Add(new TabGroup("Fun", new FunModule()));
             _groups.Add(new TabGroup("Settings", new ConfigsModule(), new KeybindsModule(), new SettingsModule(), new MacrosModule(), new ConsoleModule()));
 
             foreach (TabGroup g in _groups) _modules.AddRange(g.Pages);

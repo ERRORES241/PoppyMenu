@@ -496,7 +496,8 @@ namespace PoppyMenu
 
         private static void KillAllEnemies()
         {
-            foreach (CharacterMaster m in CharacterMaster.readOnlyInstancesList)
+            var list = new System.Collections.Generic.List<CharacterMaster>(CharacterMaster.readOnlyInstancesList);
+            foreach (CharacterMaster m in list)
             {
                 if (m == null) continue;
                 CharacterBody b = m.GetBody();
@@ -511,11 +512,61 @@ namespace PoppyMenu
             if (string.IsNullOrEmpty(cardName) || DirectorCore.instance == null || Run.instance == null) return;
             SpawnCard card = null;
             bool interactable = false;
+
+            // 1. Direct match in Catalogs
             foreach (var e in Catalogs.SpawnCards)
             {
-                if (e.Name == cardName) { card = e.Card; interactable = e.IsInteractable; break; }
+                if (e.Card != null && (e.Card.name.Equals(cardName, System.StringComparison.OrdinalIgnoreCase) || e.Name.Equals(cardName, System.StringComparison.OrdinalIgnoreCase))) 
+                { 
+                    card = e.Card; 
+                    interactable = e.IsInteractable; 
+                    break; 
+                }
             }
-            if (card == null) { Log.Warning($"Spawn: no card '{cardName}'."); return; }
+
+            // 2. Partial match in Catalogs
+            if (card == null)
+            {
+                foreach (var e in Catalogs.SpawnCards)
+                {
+                    if (e.Card != null && e.Card.name.IndexOf(cardName, System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        card = e.Card;
+                        interactable = e.IsInteractable;
+                        break;
+                    }
+                }
+            }
+
+            // 3. Resources.FindObjectsOfTypeAll
+            if (card == null)
+            {
+                foreach (SpawnCard sc in Resources.FindObjectsOfTypeAll<SpawnCard>())
+                {
+                    if (sc != null && (sc.name.Equals(cardName, System.StringComparison.OrdinalIgnoreCase) || sc.name.IndexOf(cardName, System.StringComparison.OrdinalIgnoreCase) >= 0))
+                    {
+                        card = sc;
+                        interactable = sc is InteractableSpawnCard;
+                        break;
+                    }
+                }
+            }
+
+            // 4. ShrineRebirthController fields fallback
+            if (card == null)
+            {
+                var rebirthController = Object.FindObjectOfType<ShrineRebirthController>();
+                if (rebirthController != null)
+                {
+                    string lower = cardName.ToLower();
+                    if (lower.Contains("solus") || lower.Contains("encrypted")) card = rebirthController.solusShopPortalISC;
+                    else if (lower.Contains("conduit")) card = rebirthController.conduitCanyonPortalISC;
+                    else if (lower.Contains("helminth") || lower.Contains("rebirth")) card = rebirthController.helminthPortalISC;
+                    if (card != null) interactable = true;
+                }
+            }
+
+            if (card == null) return;
 
             TeamIndex team = (TeamIndex)teamRaw;
             for (int i = 0; i < Mathf.Clamp(count, 1, 50); i++)

@@ -2,86 +2,72 @@
 
 An in-game cheat and debug menu for Risk of Rain 2. Press Insert to open it.
 
-A personal project, open source under the MIT license. Pull requests and ideas are welcome. There's a lot packed in here.
+A personal project, open source under the MIT license. Pull requests and ideas are welcome.
 
-## What it does
+## Features
 
-Organized into tabs, with sub-pages where it makes sense.
+Organized into clean top-level tabs and focused sub-pages.
 
 ### Aimbot
-- Silent aim that hits the target closest to your crosshair on any survivor without your camera moving (works on hitscan, yes including Railgunner, and on projectiles).
-  - **Railgunner Weak Point Targeting:** Automatically locks onto enemy red critical weak points (`isSniperTarget`) when playing as Railgunner, delivering 100% critical hits.
-  - **No Spread:** Eliminates all bullet and projectile spread across all survivor skills and weapons.
-  - **No Recoil:** Suppresses camera recoil and kickback when firing weapons.
-  - **Settings:** Target priority (crosshair, distance, low HP, high HP), prioritize bosses, sticky target, line-of-sight check, range and FOV limits, automatic homing projectiles, magic bullet (shots pass through walls), target highlight, smooth continuous FOV circle, and a bindable hold-to-aim key
+- Silent aim that hits the target closest to your crosshair on any survivor without moving your camera (works on hitscan and projectiles).
+- **Railgunner Weak Point Targeting:** Automatically locks onto enemy red critical weak points (`isSniperTarget`) when actively aiming/scoping with Railgunner skills.
+- **No Spread & No Recoil:** Eliminates weapon spread and camera kickback across all survivor skills.
+- **Customization:** Target priority (crosshair, distance, low HP, high HP), prioritize bosses, line-of-sight check, FOV/range limits, homing projectiles, magic bullet (penetrate walls), and smooth continuous FOV overlay circle.
 
 ### Visuals
-- ESP for enemies, interactables, and the teleporter through walls.
-- Custom colors per category, a max-distance filter, marker size, and toggles for names, distance, and enemy health.
-- **Dynamic Localization:** ESP labels pull directly from your game's language settings (Russian, English, etc.).
-- **Extensive Tracking:** Supports tracking Void Cradles, Void Potentials, Command Artifact Cubes (with rarity-based coloring), Scrappers, Cleansing Pools, Bazaar Seers/Cauldrons, and more.
-- **Camera & FOV:** Built-in FOV override slider (60 - 140).
-- **Active Effects HUD:** A perfectly aligned, draggable on-screen HUD that shows your currently active cheats (God Mode, Aimbot, etc.). Can be toggled on/off.
+- ESP for enemies, interactables, and teleporters through walls.
+- **Category Filters:** Toggle ESP rendering independently for Chests/Multishops, Shrines, Drones/Turrets, Printers, Scrappers, Barrels, and Other interactables (including Void Potentials).
+- **Dynamic Localization:** ESP labels use native game language tokens (Russian, English, etc.).
+- **Active Effects HUD:** Draggable on-screen HUD displaying currently active toggles (God Mode, Aimbot, Sprint, etc.) with automatic pixel-accurate height scaling.
 
 ### Movement
-- Flight, no-clip, always sprint, jump pack. You can still shoot and use skills while flying.
-- **Native BunnyHop (Auto-Jump):** Flawless integration into the game's native input pipeline. Holding jump perfectly triggers the game's built-in mechanics (including Wax Quail momentum and Headstomper buffs) without desyncs.
+- **Flight & No-Clip:** Free flight movement across the map.
+- **Attack-Aware Always Sprint:** Forces sprinting when moving without interrupting attack/skill animations or standing idle.
+- **BunnyHop (Auto-Jump) & Jump Pack:** Integrated auto-jumping that preserves Wax Quail momentum and Headstomper mechanics.
 
 ### Player
-Sub-pages for everything related to your local character:
-- General: god mode, buddha (survive lethal hits), infinite skills, heal to full or by an amount, hurt yourself, respawn, give money/XP/lunar coins, give or remove any buff, and perform quick actions like giving all items or killing all enemies.
-- Stats: multipliers for damage, attack speed, move speed, armor, crit, and max health, with a live readout.
-- Items: Give any item or equipment from a searchable, tier-colored list. Give all items (the best quality of each), stack inventory (like Shrine of Order), reroll items, clear inventory, undo the last inventory change, and toggle equipment cooldown.
-- Character: Turn into any survivor or monster. Pick something that can't actually spawn and it just puts you back instead of ending your run.
+Main controls for the local character across three sub-pages:
+- **Survival:** God mode, Semi-Godmode (Buddha), Skills No CD, full heal, hurt, respawn, and instant Kill All Enemies.
+- **Economy:** Give Money, XP, and Lunar Coins with configurable numerical stepper inputs.
+- **Stats:** Live readout and multipliers for damage, attack speed, movement speed, armor, crit chance, and max health.
+- **Items:** Searchable item and equipment giver with tier color coding, Stack Inventory (Shrine of Order), Reroll Items, Clear Inventory, Undo Last Change, and Equipment No Cooldown toggle.
 
 ### World
-Sub-pages for everything stage, difficulty, and lobby related:
-- Time: freeze the whole match, freeze only the run timer so difficulty stops climbing, or scale time for slow motion and fast forward. Plus safety toggles: no enemies (killed on spawn), lock experience, and prevent profile saving so test runs stay off your save file.
-- Spawn: spawn any monster or interactable where you aim, choose how many and whether they're your ally or an enemy.
-- Run: set stages cleared, run time, and team level, toggle every artifact on or off, jump to any stage, with a live readout of stage, clock, and difficulty.
-- Teleporter: instant charge, skip stage, add a mountain shrine stack, spawn the shop, gold, or celestial portals.
-- Players: Everyone in the lobby with per-player controls (heal, revive, hurt, kill, teleport, change team, give items, change body, kick/ban).
+Stage, run, and server management across sub-pages:
+- **World:** Match freeze, run timer freeze, time scaling (slow motion/fast forward), No Enemies mode, experience lock, and profile save prevention.
+- **Spawn:** Spawn monsters or interactables at crosshairs with team and count parameters. Cleaned catalog names without raw asset tags.
+- **Run:** Set stage clear count, run time, team level, toggle active artifacts, and stage skip.
+- **Teleporter:** Instant teleporter charge toggle, stage skip, and Mountain Shrine stack adder.
+- **Players:** Lobby player controls (heal, revive, hurt, kill, teleport, team change, item grant, kick/ban).
 
-### Settings
-Four sub-pages:
-- Settings: the Open Menu key, UI scale, the host-permission toggles, the accent color, plus catalog refresh and window reset.
-- Keybinds: bind any feature (or a macro) to any key or mouse button (side buttons included). Bindings save to disk and fire while the menu is closed.
-- Presets: save your toggles and an item list as a named profile. Auto-grant it on every spawn, or set one as your default to load on startup so reopening the game restores your setup. Export a preset to a code to share it, or import one from a pasted code.
-- Macros: build a named sequence of any custom actions (give specific items or buffs, currency, spawn, become a body, run features) and bind it to a single key, so one press fires the whole chain.
+### Fun
+Dedicated survivor-specific utilities and mechanics:
+- **Instant Ult Charge (Railgunner):** Instant 100% charge completion for Railgunner's ultimate upon activation.
+- **No Ult Cooldown (Railgunner):** Resets Special skill cooldown and bypasses the 5-second overheat/backpack lockout without altering primary, secondary, or utility skills.
+- **Ult Spam (Railgunner):** Converts primary M1 (LMB) attacks into Supercharge ultimate bullets for continuous un-scoped ultimate firing.
 
-### Look and feel
-- Draggable, resizable windows with a smooth corner grab, UI scaling, a recolorable accent, on-screen popups when you do something, and it remembers where you left the window.
+### Settings & Configuration
+- **Settings:** Menu keybind, UI scale, host permission toggles, accent color, catalog refresh, and window reset.
+- **Keybinds:** Map menu actions, toggles, or macros to keyboard and mouse buttons (including side mouse buttons).
+- **Presets & Macros:** Save toggle profiles, export/import preset codes, and build custom multi-action execution chains bound to single hotkeys.
 
-## Console commands
-Everything is also driveable from the normal in-game console using the same command names as DebugToolkit, so you can type what you already know: give_item, give_equip, give_money, give_lunar, give_buff, remove_item, random_items, spawn_ai, spawn_body, spawn_interactable, spawn_as, spawn_portal, add_portal, no_enemies, god, buddha, noclip, kill_all, true_kill, respawn, heal, hurt, teleport_on_cursor, change_team, next_stage, fixed_time, stop_timer, charge_zone, set_artifact, time_scale, team_set_level, run_set_stages_cleared, the list_ commands, and the midgame/lategame/dtzoom macros. The in-menu Console tab has a searchable reference. If you also have DebugToolkit installed, its commands take priority and nothing clashes.
+## Console Commands
+Compatible with standard in-game console commands used by DebugToolkit: `give_item`, `give_equip`, `give_money`, `give_lunar`, `give_buff`, `remove_item`, `random_items`, `spawn_ai`, `spawn_body`, `spawn_interactable`, `spawn_as`, `no_enemies`, `god`, `buddha`, `noclip`, `kill_all`, `true_kill`, `respawn`, `heal`, `hurt`, `teleport_on_cursor`, `change_team`, `next_stage`, `fixed_time`, `stop_timer`, `charge_zone`, `set_artifact`, `time_scale`, `team_set_level`, and `run_set_stages_cleared`.
 
 ## Controls
-- Insert opens and closes the menu (rebindable).
-- Click with your mouse, drag the title bar to move a window, drag the bottom-right corner to resize.
-- Bind any feature to any key in the Keybinds tab.
+- Default menu key: `Insert` (rebindable in Settings or Keybinds).
+- Click and drag title bars to move windows; drag bottom-right handles to resize.
 
 ## Multiplayer
-By default nobody else can use this in your game. If you're the host, requests from other clients are ignored unless you turn on "Allow Others To Use This" in Settings. Anything that changes the actual run, like items, spawns, or freezing the match, only works for the host or in solo. Visual and movement stuff runs for whoever is using it. Keep it to solo, or get the host's okay first.
+Host permissions apply by default. Server-side changes (items, spawns, match freeze) require host privileges or solo play. Visual and client-side movement features operate locally.
 
-## Install
-The easy way is a mod manager like r2modman or Thunderstore Mod Manager. Install Poppy Menu and it grabs BepInEx and R2API for you. To do it by hand, drop PoppyMenu.dll into Risk of Rain 2/BepInEx/plugins.
-
-## Fair warning
-This covers a ton of ground and a lot of it was built fast, so expect rough edges and bugs. Some projectiles and bodies behave differently than others, and a few things are best effort. It's a powerful debug tool, so keep it to single-player or private lobbies and don't ruin anyone's run. No warranty, use it at your own risk.
-
-## Feedback
-I'd genuinely love to hear suggestions, feature ideas, and bug reports. If there's something you want added, or something's acting up, drop a comment and let me know. I'm always happy to keep improving it.
+## Installation
+Drop `PoppyMenu.dll` into `Risk of Rain 2/BepInEx/plugins` or install via r2modman / Thunderstore Mod Manager.
 
 ## Credits
-Poppy Menu is made by Poppy. 
-**Note: Recent enhancements to this project were developed with the assistance of AI.**
+Poppy Menu is maintained by Poppy.
+*Note: Recent menu restructuring and enhancement updates were developed with AI assistance.*
 
-It started as a rebrand and rewrite of Umbra Menu by Aquatic Labs, which was itself a fork of Spektre Menu by BennettStaley, merged with Lodington's fork. Big thanks to all of them for the original work this is built on.
-
-A lot of the debug and lobby features here are reimplementations inspired by two excellent open mods, go support them:
-- DebugToolkit by harbingerofme (BSD-3-Clause)
-- Aerolt by Lodington (MIT)
-
-Reverse-engineering and code inspection were made possible with **JetBrains dotPeek**.
-
-Built with BepInEx and R2API, plus the wider Risk of Rain 2 modding community's tools.
+Based on code and architecture from Umbra Menu (Aquatic Labs), Spektre Menu (BennettStaley), and Lodington's fork.
+Inspired by DebugToolkit (harbingerofme) and Aerolt (Lodington).
+Decompiled code analysis made possible with **JetBrains dotPeek**.
