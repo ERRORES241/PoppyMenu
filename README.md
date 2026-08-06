@@ -73,4 +73,4 @@ Poppy Menu is maintained by Poppy.
 
 Based on code and architecture from Umbra Menu (Aquatic Labs), Spektre Menu (BennettStaley), and Lodington's fork.
 Inspired by DebugToolkit (harbingerofme) and Aerolt (Lodington).
-Decompiled code analysis made possible with **JetBrains dotPeek**.
+Decompiled game code analysis made possible with **JetBrains dotPeek**.
